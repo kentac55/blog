@@ -16,8 +16,8 @@ const Application: FC<AppProps> = ({ Component, pageProps }: AppProps) => {
     setThemeType(next)
   }, [])
 
-  useEffect(() => {
-    if (typeof localStorage !== 'object') return null
+  useEffect((): void => {
+    if (typeof localStorage !== 'object') return
     const themeType = localStorage.getItem('theme')
     setThemeType(themeType === 'dark' ? 'dark' : 'light')
   }, [])

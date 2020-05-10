@@ -61,7 +61,7 @@ const Layout: FC<LayoutProps> = ({ children, meta }) => {
       <div className="container">
         <Spacer />
         <Profile />
-        {inDetailPage && <Title title={meta.title} date={meta.date} />}
+        {inDetailPage && meta && <Title title={meta.title} date={meta.date} />}
         {children}
         <Spacer y={5} />
         <Contacts isDetailPage={inDetailPage} />
