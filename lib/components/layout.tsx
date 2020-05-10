@@ -1,39 +1,60 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { FC, ReactNode, useEffect, useMemo, useState } from 'react'
 import Head from 'next/head'
 import Profile from './profile'
 import Contacts from './contacts'
 import Title from './title'
 import { Spacer } from '@zeit-ui/react'
 import { Configs } from '../utils'
+import { PageMetadata } from './posts/posts'
 
-const LayoutHeader = ({ meta }) => (
+type LayoutHeaderProps = {
+  meta?: PageMetadata
+}
+
+const LayoutHeader: FC<LayoutHeaderProps> = ({ meta }) => (
   <Head>
-    {meta.title && <title>{meta.title} - {Configs.title}</title>}
-    {meta.description && <meta name="description" content={meta.description} />}
-    {meta.description && <meta property="og:description" content={meta.description} />}
-    {meta.title && <meta property="og:title" content={meta.title} />}
-    {meta.image && <meta property="og:image" content={meta.image} />}
-    {meta.image && <meta property="twitter:image" content={meta.image} />}
+    {meta && meta.title && (
+      <title>
+        {meta.title} - {Configs.title}
+      </title>
+    )}
+    {meta && meta.description && (
+      <meta name="description" content={meta.description} />
+    )}
+    {meta && meta.description && (
+      <meta property="og:description" content={meta.description} />
+    )}
+    {meta && meta.title && <meta property="og:title" content={meta.title} />}
+    {meta && meta.image && <meta property="og:image" content={meta.image} />}
+    {meta && meta.image && (
+      <meta property="twitter:image" content={meta.image} />
+    )}
   </Head>
 )
 
-const Layout = ({ children, meta = {} }) => {
+type LayoutProps = {
+  children: ReactNode
+  meta?: PageMetadata
+}
+
+const Layout: FC<LayoutProps> = ({ children, meta }) => {
   const [showAfterRender, setShowAfterRender] = useState(false)
-  const inDetailPage = useMemo(() => meta && meta.title, [])
+  const inDetailPage = useMemo(() => Boolean(meta && meta.title), [])
   useEffect(() => setShowAfterRender(true), [])
-  
-  if (!showAfterRender) return (
-    <div className="article-content">
-      <LayoutHeader meta={meta} />
-      {children}
-      <style jsx>{`
-        .article-content {
-          opacity: 0;
-          display: none;
-        }
-      `}</style>
-    </div>
-  )
+
+  if (!showAfterRender)
+    return (
+      <div className="article-content">
+        <LayoutHeader meta={meta} />
+        {children}
+        <style jsx>{`
+          .article-content {
+            opacity: 0;
+            display: none;
+          }
+        `}</style>
+      </div>
+    )
   return (
     <section>
       <LayoutHeader meta={meta} />
@@ -54,7 +75,7 @@ const Layout = ({ children, meta = {} }) => {
           align-items: center;
           justify-content: center;
         }
-        
+
         .container {
           width: 100%;
           max-width: ${Configs.layouts.pageWidth};
@@ -62,23 +83,23 @@ const Layout = ({ children, meta = {} }) => {
           flex-direction: column;
           justify-content: flex-start;
         }
-        
+
         .container :global(h1) {
           font-size: 2rem;
         }
-        
+
         .container :global(h2) {
           font-size: 1.7rem;
         }
-        
+
         .container :global(h3) {
           font-size: 1.4rem;
         }
-        
+
         .container :global(h4) {
           font-size: 1.2rem;
         }
-        
+
         @media only screen and (max-width: 767px) {
           .container {
             max-width: ${Configs.layouts.pageWidthMobile};

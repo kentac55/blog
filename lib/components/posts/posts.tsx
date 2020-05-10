@@ -1,43 +1,67 @@
 import Head from 'next/head'
-import React, { useMemo } from 'react'
+import React, { FC, useMemo } from 'react'
 import PostItem from './post-item'
 import { useTheme, Link } from '@zeit-ui/react'
 import { Configs } from '../../utils'
 import NextLink from 'next/link'
-import metadata from 'lib/data/metadata'
+import metadata from '../../data/metadata.json'
 
-const getMoreLink = len => {
+export type PageMetadata = {
+  title: string
+  date: string
+  description: string
+  image?: string
+}
+
+type PageData = {
+  name: string
+  url: string
+  meta: PageMetadata
+}
+
+type MetadataNode = {
+  name: string
+  children: PageData[]
+}
+
+const getMoreLink: FC<number> = (len: number) => {
   if (len < Configs.latestLimit) return null
   return (
     <NextLink href="/blog" passHref>
-      <Link pure title="More">...</Link>
+      <Link pure title="More">
+        ...
+      </Link>
     </NextLink>
   )
 }
 
-const getLatest = (data, isLatest) => {
-  const postNode = data.find(item => item.name === 'posts')
+const getLatest = (data: MetadataNode[], isLatest: boolean): PageData[] => {
+  const postNode = data.find((item) => item.name === 'posts')
   const posts = (postNode || {}).children || []
   if (!isLatest) return posts
   return posts.slice(0, Configs.latestLimit)
 }
 
-const getTitle = (isLatest) => {
+const getTitle = (isLatest: boolean): string => {
   if (!isLatest) return Configs.labels.list
   return Configs.labels.latest
 }
 
-const Posts = ({
-  isLatest = false,
-}) => {
+type PostsProps = { isLatest?: boolean }
+
+const Posts: FC<PostsProps> = ({ isLatest = false }) => {
   const theme = useTheme()
   const posts = useMemo(() => getLatest(metadata, isLatest), [])
   const title = useMemo(() => getTitle(isLatest), [])
-  
+
   return (
     <section>
       <Head>
-        {!isLatest && <title>{getTitle(false)} - {Configs.title}</title>}
+        {!isLatest && (
+          <title>
+            {getTitle(false)} - {Configs.title}
+          </title>
+        )}
       </Head>
       <h2>{title}</h2>
       <div className="content">
@@ -50,9 +74,9 @@ const Posts = ({
         section {
           margin-top: calc(${theme.layout.gap} * 2);
         }
-        
+
         section h2 {
-          font-size: .8rem;
+          font-size: 0.8rem;
           color: ${theme.palette.accents_6};
           text-transform: uppercase;
           letter-spacing: 2px;
@@ -61,20 +85,20 @@ const Posts = ({
           display: inline-block;
           margin: 0;
         }
-        
+
         .content {
           margin: ${theme.layout.gap} 0;
         }
-        
+
         .more {
           display: block;
         }
-        
+
         @media only screen and (max-width: ${theme.layout.breakpointMobile}) {
           section {
             margin-top: ${theme.layout.gapQuarter};
           }
-          
+
           section h2 {
             margin-top: calc(1.5 * ${theme.layout.gap});
           }

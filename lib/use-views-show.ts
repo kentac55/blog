@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react'
 import { Configs } from './utils'
 
 const host = 'https://views.show/json'
-const getViews = async (key, readOnly) => {
+type ViewsShowType = {
+  count: number
+}
+const getViews = async (
+  key: string,
+  readOnly: boolean
+): Promise<ViewsShowType> => {
   let url = `${host}?key=${key}`
   if (readOnly) {
     url += '&readonly=1'
@@ -20,27 +26,27 @@ const getViews = async (key, readOnly) => {
   }
 }
 
-const useViewsShow = (key, {
-  readOnly = false,
-  enableViews = Configs.enableViews,
-} = {}) => {
+const useViewsShow = (
+  key: string,
+  { readOnly = false, enableViews = Configs.enableViews } = {}
+): [number, boolean] => {
   const [count, setCount] = useState(0)
   const [updated, setUpdated] = useState(false)
-  
+
   useEffect(() => {
     let unmount = false
     if (!enableViews) return
-    (async() => {
+    ;(async (): Promise<void> => {
       const res = await getViews(key, readOnly)
       if (unmount) return
       setCount(res.count)
       setUpdated(true)
     })()
-    return () => {
+    return (): void => {
       unmount = true
     }
   }, [])
-  
+
   return [count, updated]
 }
 

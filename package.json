@@ -13,6 +13,7 @@
     "fix": "eslint . --fix --ext .ts,.tsx ."
   },
   "dependencies": {
+    "@types/ms": "^0.7.31",
     "@zeit-ui/react": "^1.0.0-rc.11",
     "@zeit-ui/react-icons": "^1.2.1",
     "@zeit-ui/react-prism": "^1.0.0",
@@ -25,7 +26,8 @@
     "@mapbox/rehype-prism": "^0.4.0",
     "@mdx-js/loader": "^1.5.7",
     "@next/mdx": "^9.2.2",
-    "@types/react": "^16.9.23",
+    "@types/node": "^13.13.5",
+    "@types/react": "^16.9.34",
     "@types/react-dom": "^16.9.5",
     "@typescript-eslint/eslint-plugin": "^2.31.0",
     "@typescript-eslint/parser": "^2.31.0",
@@ -41,7 +43,8 @@
     "prettier": "^2.0.5",
     "prompt-sync": "^4.2.0",
     "rehype-join-line": "^1.0.2",
-    "styled-jsx": "^3.2.4"
+    "styled-jsx": "^3.2.4",
+    "typescript": "^3.8.3"
   },
   "husky": {
     "hooks": {

@@ -1,11 +1,11 @@
-import React from 'react'
+import React, { FC } from 'react'
 import Profile from './profile'
 
-const Home = () => {
+const Home: FC = () => {
   return (
     <div className="home">
       <Profile />
-  
+
       <style jsx>{`
         .home {
           width: 100%;
