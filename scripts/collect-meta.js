@@ -32,30 +32,21 @@ const sortPosts = (data) => {
   const sorted = posts
     .map(post => {
       if (!post.meta) {
-        console.error(`[missing metadata]: ${post.url}`)
-        return post
+        throw new Error(`[missing metadata]: ${post.url}`)
       }
-  
       if (!post.meta.title) {
-        console.error(`[metadata]: missing key "title" in (${post.name}) ${post.url}`)
-        console.error('> Please make sure that each post has a [title].')
+        throw new Error(`[metadata]: missing key "title" in (${post.name}) ${post.url}`)
       }
-      
       if (!post.meta.date) {
-        console.error(`[metadata]: missing key "date" in (${post.name}) ${post.url}`)
-        console.error('> Try to run "new Date().toUTCString()" in console to get "date".')
-        const meta = {...post.meta, date: new Date().toUTCString() }
-        return {...post, meta}
+        throw new Error(`[metadata]: missing key "date" in (${post.name}) ${post.url}`)
       }
-  
       if (`${new Date(post.meta.date)}` === 'Invalid Date') {
-        console.error(`[metadata]: format error "date" in (${post.name}) ${post.url}`)
-        console.error('> Try to run "new Date().toUTCString()" in console to get "date".')
+        throw new Error(`[metadata]: format error "date" in (${post.name}) ${post.url}`)
       }
       return post
     })
     .sort((pre, next) => +new Date(next.meta.date) - new Date(pre.meta.date))
-  
+
   return data.map(v => {
     if (v.name !== 'posts') return v
     return { ...v, children: sorted }

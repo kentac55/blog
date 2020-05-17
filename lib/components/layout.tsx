@@ -4,7 +4,7 @@ import Profile from './profile'
 import Contacts from './contacts'
 import Title from './title'
 import { Spacer } from '@zeit-ui/react'
-import { Configs } from '../utils'
+import { blogConfig } from '../config'
 import { PageMetadata } from './posts/posts'
 
 type LayoutHeaderProps = {
@@ -15,7 +15,7 @@ const LayoutHeader: FC<LayoutHeaderProps> = ({ meta }) => (
   <Head>
     {meta && meta.title && (
       <title>
-        {meta.title} - {Configs.title}
+        {meta.title} - {blogConfig.title}
       </title>
     )}
     {meta && meta.description && (
@@ -78,7 +78,7 @@ const Layout: FC<LayoutProps> = ({ children, meta }) => {
 
         .container {
           width: 100%;
-          max-width: ${Configs.layouts.pageWidth};
+          max-width: ${blogConfig.layouts.pageWidth};
           display: flex;
           flex-direction: column;
           justify-content: flex-start;
@@ -102,7 +102,7 @@ const Layout: FC<LayoutProps> = ({ children, meta }) => {
 
         @media only screen and (max-width: 767px) {
           .container {
-            max-width: ${Configs.layouts.pageWidthMobile};
+            max-width: ${blogConfig.layouts.pageWidthMobile};
             min-height: 100vh;
           }
         }

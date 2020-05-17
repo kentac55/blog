@@ -1,9 +1,4 @@
-// import BLOG from '../blog.config'
-
-// const labels = BLOG.labels || {}
-// const layouts = BLOG.layouts || {}
-
-export const Configs = {
+export const blogConfig = {
   author: 'kentac55',
   summary: 'my blog',
   title: 'sorena',
@@ -19,7 +14,6 @@ export const Configs = {
 
   googleAnalytics: '',
   enableViews: true,
-  // isCN: () => BLOG.language.includes('cn'),
 
   labels: {
     default: 'posts',
@@ -32,3 +26,5 @@ export const Configs = {
     pageWidthMobile: '88vw',
   },
 }
+
+export type Config = typeof blogConfig

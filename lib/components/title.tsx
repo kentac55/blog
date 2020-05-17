@@ -2,7 +2,7 @@ import React, { FC, useMemo } from 'react'
 import { msToString } from '../data-transform'
 import { useTheme } from '@zeit-ui/react'
 import { useRouter } from 'next/router'
-import { Configs } from '../utils'
+import { blogConfig } from '../config'
 import useViewsShow from '../use-views-show'
 
 type DateDisplayProps = {
@@ -18,7 +18,7 @@ const DateDisplay: FC<DateDisplayProps> = ({ date }) => {
   if (`${d}` === 'Invalid Date') return null
 
   const time = Date.now() - d.getTime()
-  const showViews = useMemo(() => Configs.enableViews && countUpdated, [
+  const showViews = useMemo(() => blogConfig.enableViews && countUpdated, [
     countUpdated,
   ])
   const views = useMemo(() => `${count} ビュー`, [count])
@@ -26,7 +26,7 @@ const DateDisplay: FC<DateDisplayProps> = ({ date }) => {
   return (
     <p>
       <span className="dot">﹥</span>
-      {d.toLocaleString(Configs.language).replace(/\//g, '-')}
+      {d.toLocaleString(blogConfig.language).replace(/\//g, '-')}
       <span className="split"> / </span>
       {msToString(time)}
       {showViews && (

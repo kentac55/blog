@@ -2,7 +2,7 @@ import React, { FC, ReactNode, useMemo } from 'react'
 import NextLink from 'next/link'
 import { useTheme, Link } from '@zeit-ui/react'
 import metadata from '../data/metadata.json'
-import { Configs } from '../utils'
+import { blogConfig } from '../config'
 
 export type PageMetadata = {
   title: string
@@ -44,7 +44,7 @@ const ProfileLinks: FC = () => {
   const links = useMemo(() => getFixes(metadata), [])
   return (
     <div className="link">
-      {makeLink({ url: '/blog', name: Configs.labels.default })}
+      {makeLink({ url: '/blog', name: blogConfig.labels.default })}
       {links.map((link) => makeLink(link))}
 
       <style jsx>{`

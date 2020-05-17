@@ -1,9 +1,9 @@
 import React, { FC, useMemo } from 'react'
 import { useTheme, Spacer, Link, Divider } from '@zeit-ui/react'
-import useConfigs from '../config-context'
+import useblogConfig from '../config-context'
 import SunIcon from '@zeit-ui/react-icons/sun'
 import MoonIcon from '@zeit-ui/react-icons/moon'
-import { Configs } from '../utils'
+import { blogConfig } from '../config'
 
 type ContactsProps = {
   isDetailPage: boolean
@@ -11,9 +11,10 @@ type ContactsProps = {
 
 const Contacts: FC<ContactsProps> = ({ isDetailPage = false }) => {
   const theme = useTheme()
-  const configs = useConfigs()
+  const blogThemeConfig = useblogConfig()
   const isDark = useMemo(() => theme.type === 'dark', [theme.type])
-  const switchTheme = (): void => configs.onChange(theme.type === 'dark')
+  const switchTheme = (): void =>
+    blogThemeConfig.onChange(theme.type === 'dark')
 
   const themeTitle = 'Switch themes'
   const linkProps = {
@@ -28,18 +29,22 @@ const Contacts: FC<ContactsProps> = ({ isDetailPage = false }) => {
         {isDetailPage && <Divider y={0.5} />}
         <div className="between">
           <div className="socials">
-            {Configs.email && (
-              <Link aria-label="email" href={Configs.email} {...linkProps}>
+            {blogConfig.email && (
+              <Link aria-label="email" href={blogConfig.email} {...linkProps}>
                 Email
               </Link>
             )}
-            {Configs.github && (
-              <Link aria-label="github" href={Configs.github} {...linkProps}>
+            {blogConfig.github && (
+              <Link aria-label="github" href={blogConfig.github} {...linkProps}>
                 Github
               </Link>
             )}
-            {Configs.twitter && (
-              <Link aria-label="twitter" href={Configs.twitter} {...linkProps}>
+            {blogConfig.twitter && (
+              <Link
+                aria-label="twitter"
+                href={blogConfig.twitter}
+                {...linkProps}
+              >
                 Twitter
               </Link>
             )}
@@ -64,7 +69,7 @@ const Contacts: FC<ContactsProps> = ({ isDetailPage = false }) => {
 
         <style jsx>{`
           .contacts {
-            width: ${Configs.layouts.pageWidth};
+            width: ${blogConfig.layouts.pageWidth};
             padding: 0 ${theme.layout.gapQuarter};
             position: absolute;
             z-index: 1;
@@ -119,7 +124,7 @@ const Contacts: FC<ContactsProps> = ({ isDetailPage = false }) => {
           @media only screen and (max-width: ${theme.layout.breakpointMobile}) {
             .contacts {
               position: absolute;
-              width: ${Configs.layouts.pageWidthMobile};
+              width: ${blogConfig.layouts.pageWidthMobile};
             }
           }
         `}</style>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, FC } from 'react'
 import { Row, useTheme, User, Link } from '@zeit-ui/react'
 import NextLink from 'next/link'
 import ProfileLinks from './profile-links'
-import { Configs } from '../utils'
+import { blogConfig } from '../config'
 
 const Profile: FC = ({}) => {
   const theme = useTheme()
@@ -19,8 +19,8 @@ const Profile: FC = ({}) => {
       <Row align="bottom" className="user">
         <NextLink href="/" passHref>
           <Link pure>
-            <User src="/assets/avatar.png" name={Configs.author}>
-              {Configs.summary}
+            <User src="/assets/avatar.png" name={blogConfig.author}>
+              {blogConfig.summary}
             </User>
           </Link>
         </NextLink>

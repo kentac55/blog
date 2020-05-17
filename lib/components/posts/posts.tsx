@@ -2,7 +2,7 @@ import Head from 'next/head'
 import React, { FC, useMemo } from 'react'
 import PostItem from './post-item'
 import { useTheme, Link } from '@zeit-ui/react'
-import { Configs } from '../../utils'
+import { blogConfig } from '../../config'
 import NextLink from 'next/link'
 import metadata from '../../data/metadata.json'
 
@@ -25,7 +25,7 @@ type MetadataNode = {
 }
 
 const getMoreLink: FC<number> = (len: number) => {
-  if (len < Configs.latestLimit) return null
+  if (len < blogConfig.latestLimit) return null
   return (
     <NextLink href="/blog" passHref>
       <Link pure title="More">
@@ -39,12 +39,12 @@ const getLatest = (data: MetadataNode[], isLatest: boolean): PageData[] => {
   const postNode = data.find((item) => item.name === 'posts')
   const posts = (postNode || {}).children || []
   if (!isLatest) return posts
-  return posts.slice(0, Configs.latestLimit)
+  return posts.slice(0, blogConfig.latestLimit)
 }
 
 const getTitle = (isLatest: boolean): string => {
-  if (!isLatest) return Configs.labels.list
-  return Configs.labels.latest
+  if (!isLatest) return blogConfig.labels.list
+  return blogConfig.labels.latest
 }
 
 type PostsProps = { isLatest?: boolean }
@@ -59,7 +59,7 @@ const Posts: FC<PostsProps> = ({ isLatest = false }) => {
       <Head>
         {!isLatest && (
           <title>
-            {getTitle(false)} - {Configs.title}
+            {getTitle(false)} - {blogConfig.title}
           </title>
         )}
       </Head>

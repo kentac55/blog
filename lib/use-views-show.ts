@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Configs } from './utils'
+import { blogConfig } from './config'
 
 const host = 'https://views.show/json'
 type ViewsShowType = {
@@ -28,7 +28,7 @@ const getViews = async (
 
 const useViewsShow = (
   key: string,
-  { readOnly = false, enableViews = Configs.enableViews } = {}
+  { readOnly = false, enableViews = blogConfig.enableViews } = {}
 ): [number, boolean] => {
   const [count, setCount] = useState(0)
   const [updated, setUpdated] = useState(false)

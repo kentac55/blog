@@ -6,11 +6,11 @@ import React, { useCallback, useState, useEffect, useMemo, FC } from 'react'
 import useDomClean from '../lib/use-dom-clean'
 import { getDNSPrefetchValue } from '../lib/data-transform'
 import ThemeConfigProvider from '../lib/components/theme-config-provider'
-import { Configs } from '../lib/utils'
+import { blogConfig } from '../lib/config'
 
 const Application: FC<AppProps> = ({ Component, pageProps }: AppProps) => {
   const [themeType, setThemeType] = useState('light')
-  const domain = useMemo(() => getDNSPrefetchValue(Configs.domain), [])
+  const domain = useMemo(() => getDNSPrefetchValue(blogConfig.domain), [])
   const changeHandle = useCallback((isDark: boolean) => {
     const next = isDark ? 'light' : 'dark'
     setThemeType(next)
@@ -27,20 +27,20 @@ const Application: FC<AppProps> = ({ Component, pageProps }: AppProps) => {
   return (
     <>
       <Head>
-        <title>{Configs.title}</title>
+        <title>{blogConfig.title}</title>
         {domain && <link rel="dns-prefetch" href={domain} />}
         <meta name="google" content="notranslate" />
         <meta name="referrer" content="strict-origin" />
-        <meta name="description" content={Configs.description} />
-        <meta property="og:site_name" content={Configs.title} />
-        <meta property="og:description" content={Configs.description} />
+        <meta name="description" content={blogConfig.description} />
+        <meta property="og:site_name" content={blogConfig.title} />
+        <meta property="og:description" content={blogConfig.description} />
         <meta property="og:type" content="website" />
         <meta name="generator" content="unix.bio" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="author" content={Configs.author} />
-        <meta name="twitter:creator" content={`@${Configs.twitter}`} />
-        <meta property="og:title" content={Configs.title} />
-        <meta property="og:url" content={Configs.domain} />
+        <meta name="author" content={blogConfig.author} />
+        <meta name="twitter:creator" content={`@${blogConfig.twitter}`} />
+        <meta property="og:title" content={blogConfig.title} />
+        <meta property="og:url" content={blogConfig.domain} />
         <meta
           property="og:image"
           content={`https:${domain}/assets/og-main.png`}

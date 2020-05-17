@@ -7,7 +7,7 @@ import Document, {
   DocumentContext,
   DocumentInitialProps,
 } from 'next/document'
-import { Configs } from '../lib/utils'
+import { blogConfig } from '../lib/config'
 import { CSSBaseline } from '@zeit-ui/react'
 import flush from 'styled-jsx/server'
 
@@ -32,7 +32,7 @@ class MyDocument extends Document {
 
   render(): JSX.Element {
     return (
-      <Html lang={Configs.language}>
+      <Html lang={blogConfig.language}>
         <Head />
         <body>
           <script
@@ -52,7 +52,7 @@ class MyDocument extends Document {
           <NextScript />
           <script
             async
-            src={`https://www.googletagmanager.com/gtag/js?id=${Configs.googleAnalytics}`}
+            src={`https://www.googletagmanager.com/gtag/js?id=${blogConfig.googleAnalytics}`}
           />
           <script
             async
@@ -61,7 +61,7 @@ class MyDocument extends Document {
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', '${Configs.googleAnalytics}');
+              gtag('config', '${blogConfig.googleAnalytics}');
               `,
             }}
           />
