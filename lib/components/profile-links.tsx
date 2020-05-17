@@ -34,7 +34,7 @@ const fillSpace = (name: string): string => {
 const makeLink = ({ url, name }: { url: string; name: string }): ReactNode => {
   return (
     <NextLink href={url} key={url} passHref>
-      <Link pure>{fillSpace(name)}</Link>
+      <Link>{fillSpace(name)}</Link>
     </NextLink>
   )
 }

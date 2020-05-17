@@ -28,9 +28,7 @@ const getMoreLink: FC<number> = (len: number) => {
   if (len < blogConfig.latestLimit) return null
   return (
     <NextLink href="/blog" passHref>
-      <Link pure title="More">
-        ...
-      </Link>
+      <Link title="More">...</Link>
     </NextLink>
   )
 }

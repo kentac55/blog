@@ -18,7 +18,7 @@ const Profile: FC = ({}) => {
     <div className="profile">
       <Row align="bottom" className="user">
         <NextLink href="/" passHref>
-          <Link pure>
+          <Link>
             <User src="/assets/avatar.png" name={blogConfig.author}>
               {blogConfig.summary}
             </User>

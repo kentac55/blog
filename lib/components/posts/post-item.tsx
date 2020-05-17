@@ -39,7 +39,7 @@ const PostItem: FC<PostItemProps> = ({ post }) => {
   return (
     <div className="item">
       <NextLink href={post.url} as={post.url} passHref>
-        <Link pure>
+        <Link>
           {post.name}
           <span
             className="date"
