@@ -12,8 +12,8 @@ export const blogConfig = {
   github: 'https://github.com/kentac55',
   twitter: 'https://twitter.com/kentac55',
 
-  googleAnalytics: 'UA-167234326-1',
-  enableViews: true,
+  googleAnalytics: '',
+  enableViews: false,
 
   labels: {
     default: 'posts',
