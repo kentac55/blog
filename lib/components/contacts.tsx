@@ -19,7 +19,6 @@ const Contacts: FC<ContactsProps> = ({ isDetailPage = false }) => {
   const themeTitle = 'Switch themes'
   const linkProps = {
     rel: 'noreferrer',
-    pure: true,
     target: '_blank',
   }
 
