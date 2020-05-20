@@ -1,9 +1,9 @@
 export const blogConfig = {
   author: 'kentac55',
   summary: 'my blog',
-  title: 'sorena',
-  description: 'hogehoge',
-  domain: 'example.com',
+  title: 'それな',
+  description: '雑記帳',
+  domain: 'blog.kc5m.com',
 
   language: 'ja-jp',
   latestLimit: 5,
@@ -12,7 +12,7 @@ export const blogConfig = {
   github: 'https://github.com/kentac55',
   twitter: 'https://twitter.com/kentac55',
 
-  googleAnalytics: '',
+  googleAnalytics: 'UA-167234326-1',
   enableViews: true,
 
   labels: {
