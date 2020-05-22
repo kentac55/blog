@@ -1,7 +1,7 @@
 import { AppProps } from 'next/app'
 import Head from 'next/head'
 import { PrismBaseline } from '@zeit-ui/react-prism'
-import { ZEITUIProvider, CSSBaseline } from '@zeit-ui/react'
+import { ZeitProvider, CssBaseline } from '@zeit-ui/react'
 import React, { useCallback, useState, useEffect, useMemo, FC } from 'react'
 import useDomClean from '../lib/use-dom-clean'
 import { getDNSPrefetchValue } from '../lib/data-transform'
@@ -59,8 +59,8 @@ const Application: FC<AppProps> = ({ Component, pageProps }: AppProps) => {
           content="initial-scale=1, maximum-scale=5, minimum-scale=1, viewport-fit=cover"
         />
       </Head>
-      <ZEITUIProvider theme={{ type: themeType }}>
-        <CSSBaseline />
+      <ZeitProvider theme={{ type: themeType }}>
+        <CssBaseline />
         <PrismBaseline />
         <ThemeConfigProvider onChange={changeHandle}>
           <Component {...pageProps} />
@@ -72,7 +72,7 @@ const Application: FC<AppProps> = ({ Component, pageProps }: AppProps) => {
             }
           }
         `}</style>
-      </ZEITUIProvider>
+      </ZeitProvider>
     </>
   )
 }

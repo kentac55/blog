@@ -8,7 +8,7 @@ import Document, {
   DocumentInitialProps,
 } from 'next/document'
 import { blogConfig } from '../lib/config'
-import { CSSBaseline } from '@zeit-ui/react'
+import { CssBaseline } from '@zeit-ui/react'
 import flush from 'styled-jsx/server'
 
 class MyDocument extends Document {
@@ -16,7 +16,7 @@ class MyDocument extends Document {
     ctx: DocumentContext
   ): Promise<DocumentInitialProps> {
     const initialProps = await Document.getInitialProps(ctx)
-    const styles = CSSBaseline.flush()
+    const styles = CssBaseline.flush()
 
     return {
       ...initialProps,
