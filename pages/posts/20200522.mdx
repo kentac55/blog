@@ -1,0 +1,77 @@
+import Layout from 'lib/components/layout'
+import {} from '@zeit-ui/react'
+
+export const meta = {
+  title: 'ブログを作った',
+  date: '2020-05-22T10:49:04.463Z',
+  description: 'ブログを作ったことの経緯',
+  image: '',
+}
+
+ブログ立ち上げの経緯と備忘
+
+Qiitaからお引越しするのだ👊
+
+### 2020/01
+
+要件としてはgitでblog記事を管理できれば良いかな〜くらい。
+あとは[mattn/memo](https://github.com/mattn/memo)と[glidenote/memolist.vim](https://github.com/glidenote/memolist.vim)を組み合わせれば幸せなのではとか妄想。
+
+フロントエンドを全く知らないのでフレームワークの利用を考えた。
+
+候補としては
+
+- hugo
+- gatsby
+
+の2つ。
+
+最初create-react-appからイチから作っていくことも考えたがベストプラクティスも知らない人間には辛すぎた。
+
+### 2020/03
+
+hugoはgolangなので外した(雑)。
+gatsbyはtypescript対応が辛かったので外した(雑)。
+
+### 2020/04
+
+[nextjsがSSGに対応した](https://nextjs.org/blog/next-9-3)のでnext.jsの利用を考え始めた。
+
+更にnextjsのExampleに[markdownと組み合わせたblogスターター](https://github.com/zeit/next.js/tree/canary/examples/blog-starter)があることを発見し、勝利を確信。
+
+typescriptに書き直してソースを読みつつremarkで色々遊んでみたりもした。
+これと[material-ui](https://github.com/mui-org/material-ui)組み合わせれば強そう。
+material-uiにも[blog example](https://github.com/mui-org/material-ui/tree/master/docs/src/pages/getting-started/templates/blog)あるし。
+
+### 2020/05
+
+自身のデザインセンスの無さに絶望した頃、調査の段階で[zeit-ui](https://github.com/zeit-ui)の存在を知り、更にその作者がnextjsを利用したblogシステム([unix/unix.bio](https://github.com/unix/unix.bio))を作っている事を知ったので採用してみることにした。
+
+なんとこのunix.bioはモバイル対応もしてくれるしLighthouseも100点らしい(最近Lighthouseのバージョンが上がった為、100点ではなくなった)。
+
+オリジナルのblogシステムはjavascriptで書かれているのでtypescriptで書き直すことにした。zeit-uiがtypescriptで書かれているので移植は簡単だった。
+
+システム化は考えていないのでJSONのconfigは全てtypescriptにした。
+
+最後にVercel(いつの間にか名前変わってた)にdeployし、ドメインをアサインして完成。意外とあっけなく終わった。
+
+あとdependabot入れた。
+
+### 今後やりたいこと
+
+- **定期的に記事を書く**
+- tag機能つける
+- google analyticsつける
+- MDXでTOCを生成するようにする
+- twitter連携
+- Lighthouseの点数を上げる
+- blogのmeta情報を構築するcollect機能をbuild時に実行させる
+- amp対応
+- containerとpresenterの分離
+
+### 得た知見
+
+- javascriptで書かれているモノをtypescriptに書き直すと必然的にコードを全て読むことになるので理解度が上がりやすい
+- vercelとても良い
+
+export default ({ children }) => <Layout meta={meta}>{children}</Layout>
