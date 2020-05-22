@@ -1,6 +1,6 @@
 export const blogConfig = {
   author: 'kentac55',
-  summary: 'メモ',
+  summary: '🤔🤔🤔',
   title: 'それな',
   description: '雑記帳だったり実験場だったり',
   domain: 'blog.kc5m.com',
