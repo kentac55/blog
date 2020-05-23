@@ -1,0 +1,78 @@
+import Layout from 'lib/components/layout'
+import { Card, Link } from '@zeit-ui/react'
+
+export const meta = {
+  title: '記事作成環境の改善',
+  date: '2020-05-23T20:43:39.789596892+09:00',
+  description: 'mattn/memoとglidenote/memolist.vimを使って最高にイケてるメモ環境を作ろう',
+  image: '',
+  tags: 'vim,dotfiles'
+}
+
+[先日の記事](/posts/20200522)で書いた
+
+> あとは[mattn/memo](https://github.com/mattn/memo)と[glidenote/memolist.vim](https://github.com/glidenote/memolist.vim)を組み合わせれば幸せなのではとか妄想。
+
+みたいなのを実践してみた。
+
+どちらもテンプレートファイルに対応しているため簡単にできるはず。
+
+## [mattn/memo](https://github.com/mattn/memo)
+
+<Card width="330px">
+<h4>memo</h4>
+<p>📓 Memo Life For You</p>
+<Card.Footer>
+  <Link color target="_blank" href="https://github.com/mattn/memo">Visit source code on GitHub.</Link>
+</Card.Footer>
+</Card>
+
+自分用として使うには幾つか機能として合致しない点があったのでソースコードに手を入れることになった([対応commit](https://github.com/kentac55/memo/commit/c46683ff3e77ee848292850ffe343e1ff0408042))。
+
+対応内容
+
+- ファイル拡張子をmdからmdxにした
+    - もしかしたらmdのままでも良かったかも？
+- 時刻フォーマットをRFC3339にした(javascriptの`Date()`でparseできるように)
+    - 🎯[golangの時刻フォーマットは独特](https://golang.org/src/time/format.go)
+- ここの部分で使うtemplateを`html/template`から`text/template`に変えた
+    - デフォルトの`html/template`だと`+`がエスケープされてしまい不都合だった
+
+最後に`.config/memo/config.toml`を良さげに修正してdotfilesに放り込んで対応完了。
+
+
+## [glidenote/memolist.vim](https://github.com/glidenote/memolist.vim)
+
+<Card width="330px">
+<h4>memolist.vim</h4>
+<p>simple memo plugin for Vim.</p>
+<Card.Footer>
+  <Link color target="_blank" href="https://github.com/glidenote/memolist.vim">Visit source code on GitHub.</Link>
+</Card.Footer>
+</Card>
+
+テンプレート形式が`<ファイル形式>.txt`限定だったので、blogリポジトリのテンプレートファイルと同じ階層にテンプレートファイルへのシンボリックリンク`mdx.txt`を作成した([対応commit](https://github.com/kentac55/blog/commit/fca61121966657546c7a4fa968f8b66daa9659c7))。
+
+あとはconfig書き換えて対応完了。
+
+## これにより
+
+### 👍
+
+- shell, vimからメモを気軽に取れるようになった
+- メモが自動的にblogの原稿directoryに格納されるようになった
+- メモ・ブログの投稿記事一覧を簡単に呼び出せるようになった
+
+### 👎
+
+- mattn/memoを独自ビルドに置き換えたことでdotfilesのinstall scriptがやや複雑になった
+
+### 🤔
+
+- memo作ってもその後commitとかpushするにはcdする必要があるのでそこの運用は悩みどころ
+- descriptionやimage(memo起点の場合tagsも)等のmeta情報は手動でいれないといけないの結構面倒
+    - 最悪入れなくても問題ないけど
+- browserで仕上がり確認しながら原稿編集するとreload走って404にリダイレクトされるのなんとかしたい
+    - 本番環境はうまく動いてる
+
+export default ({ children }) => <Layout meta={meta}>{children}</Layout>
