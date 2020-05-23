@@ -2,22 +2,14 @@ import Layout from 'lib/components/layout'
 import {} from '@zeit-ui/react'
 
 export const meta = {
-  title: 'TEMPLATE_NAME',
-  date: 'TEMPLATE_DATE',
+  title: '{{_title_}}',
+  date: '{{_date_}}',
   description: '',
   image: '',
+  tags: '{{_tags_}}'
 }
 
-My first post.
-
-
-
-
-
-
-
-
-
+Write your お気持ち.
 
 
 export default ({ children }) => <Layout meta={meta}>{children}</Layout>
