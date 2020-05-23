@@ -1,0 +1,34 @@
+import Layout from 'lib/components/layout'
+import { Image } from '@zeit-ui/react'
+
+export const meta = {
+  title: 'dns周りの設定について',
+  date: '2020-05-23 21:20',
+  description: 'blog開設時に行ったdns周りの設定についての備忘録',
+  image: '/images/20200523_214525.png',
+  tags: 'blog,network'
+}
+
+あまりやらない作業だったのでメモ代わりに残しておく。
+
+`kc5m.com`ドメインは遥か昔お名前.comで取得した。
+
+今だったら[Goolge Domains](https://domains.google.com/)が良いと思う。モノグサなのでドメイン名は空いてる3文字にしたかったが3文字ドメインは`.app`, `.dev`等一部のtldの維持費(取得費ではない)が高くなるためやめた。
+
+4文字でも英単語として認識される文字は`.app`, `.dev`でも高くなるようだ。
+
+blogのインフラとして[vercel](https://vercel.com/)を使う場合、
+- 登録したドメインをそのままappのドメインとして使う場合(例えば`kc5m.com`)はnsをvercelに指定されたものにすれば良さそう(試してない)。
+- サブドメインとして使う場合(例えば`blog.kc5m.com`)はCNAMEに`alias.zeit.co`を指定したレコードを追加すれば良い。
+    <Image width="671" height="343" alt="お名前.comのdnsレコード設定" src="/images/20200523_212914.png" />
+
+正常に表示されることを確認したらGoogle Search Consoleに登録する。
+
+<Image width="768" height="612" alt="Google Search Consoleのプロパティ" src="/images/20200523_214525.png" />
+
+やり方は色々あるようだが、個人的にはドメインで認証をした後URLプレフィックスを放り込むのが楽だと思う。
+
+<Image width="651" height="50" alt="お名前.comのdnsレコードでドメインの認証" src="/images/20200523_214800.png" />
+
+
+export default ({ children }) => <Layout meta={meta}>{children}</Layout>
