@@ -1,0 +1,209 @@
+import Layout from 'lib/components/layout'
+import { Image } from '@zeit-ui/react'
+
+export const meta = {
+  title: 'おうちインフラ_仮想基盤NW編',
+  date: '2020-05-24T18:16:12.106929675+09:00',
+  description: '自宅の仮想基盤をOpen vSwitch, NetworkManager, libvirtを使って構築する',
+  image: '',
+  tags: 'おうちインフラ,linux,network'
+}
+
+自宅インフラ構築のメモ。
+
+今回は仮想基盤のNW構築について。
+
+## 環境
+
+全体図はこんな感じ。
+
+<Image width="1095" height="638" alt="全体図" src="/images/20200524_190633.png" />
+
+今回は薄黄色の丸で覆われている部分についてのメモ。
+
+KVMのマシンは数年前に組んだRyzen Tyreadripper 1950X + X399Taichiのマシン。
+
+特にこのマザボくん、nvmeを3枚刺せるしI211物理NICが2つあるしメモリ256GBまでいける。ほんと神。
+
+OSはfedora 32。
+
+## いざ構築
+
+### 事前準備
+
+まず対向のCatalystのportにlacpの設定を入れてno shut。
+
+```
+interface Port-channel2
+ switchport mode trunk
+!
+interface GigabitEthernet0/1
+ description kvm
+ switchport mode trunk
+ lacp rate fast
+ channel-group 2 mode active
+ no channel-group auto
+!
+interface GigabitEthernet0/2
+ description kvm
+ switchport mode trunk
+ lacp rate fast
+ channel-group 2 mode active
+ no channel-group auto
+```
+
+その後、Fedoraのインストール。インストールするパッケージは最小でOK。
+この時点でlacpを組んでも良いが、必要なパッケージがインストールされない(後述)のと、ovsの場合ここで作る設定は不要になるため、片系がとりあえず疎通するようにしておけば良い。
+
+### 必要なパッケージのインストール
+
+```bash
+dnf update
+dnf install -y qemu-kvm virt-manager virt-install openvswitch python-openvswitch NetworkManager-ovs
+systemctl enable --now libvirtd
+systemctl enable --now openvswitch
+reboot
+```
+
+なおdnfからopenvswitchを入れると微妙に古いバージョンが入るので、それが気になる場合は[公式doc](http://docs.openvswitch.org/en/latest/intro/install/fedora/)を参考に自前buildする。
+
+今回は古いバージョンでも動いたのでビルドの手間を省いた😇。
+
+### 既存のNetworkManagerのconnectionを全て消す
+
+libvirtのデフォルトNW(`virtbr0`)を消す際は`virsh`から消すこと。
+
+```bash
+virsh net-delete default
+virsh net-autostart default --disable
+virsh net-undefine default
+nmcli c del enp4s0
+nmcli c del enp6s0
+```
+
+### ovsの設定を入れていく
+
+ovsのリソースはvmwareのesxiと照らし合わせると以下のようになる。
+
+| ovs | esxi | 備考|
+| --- | --- | --- |
+| Bridge|vSwitch | 一つのvlan domain |
+| Port | PortGroup | 複数の仮想nicをまとめる単位。Vlan Tagとかはここ |
+| Interface | Port | VM(Domain)と直接くっつく単位 |
+
+今回は以下のように設計した。
+
+<Image width="523" height="592" alt="詳細設計" src="/images/20200524_190651.png" />
+
+libvirtと組み合わせて使用する場合、**Bridgeと同名のPort, Interfaceを用意してBridgeと同名のInterfaceをLinuxに認識させる必要がある**([ソース](https://libvirt.org/formatnetwork.html#elementsConnect))。
+
+今回の場合だと`ext`というBridge名なので、`ext`という名前のPortとInterfaceを作れば良い。
+
+libvirtは同名Interfaceからmtuの値を取得しようとするので、該当Interfaceが存在しないと`libvirt: Cannot get interface MTU`のようなエラーを吐く。
+
+なお該当のInterfaceにmtuが設定されていない場合はdomainのnicのmtuに1500が設定される(~~それならわざわざInterfaceの存在を必須にしなくても良いのではとか思っちゃう~~)。
+
+```bash
+# Bridgeの作成
+nmcli c a con-name ext type ovs-bridge conn.interface ext
+# lacpを有効にしたbond Portの作成(vlanはtrunk)
+nmcli c a con-name uplink type ovs-port conn.interface uplink master ext ovs-port.lacp active ovs-port.vlan-mode trunk
+# bondPortに物理NICを紐づけ(これが終わると対向SWとのlinkが上がる)
+nmcli c a con-name enp4s0 type ethernet conn.interface enp4s0 master uplink
+nmcli c a con-name enp6s0 type ethernet conn.interface enp6s0 master uplink
+# マネジメント用Portを作成
+nmcli c a con-name vlan20 type ovs-port conn.interface vlan20 master ovsbr0 ovs-port.tag 20
+# マネジメント用PortにInterfaceを作成し、IPアドレスを設定(これが終わるとsshに切り替えられる(時もある)
+nmcli c a con-name veth20 type ovs-interface slave-type ovs-port conn.interface veth20 master vlan20 ipv4.method manual ipv4.address 192.168.20.2/24 ipv4.gateway 192.168.20.1 ipv4.dns 192.168.0.1
+# libvirt用に同名Port及び同名Interfaceを作成(con-nameを適切に変更しないとWarning出る)
+nmcli c a con-name extpg type ovs-port conn.interface ext master ext
+nmcli c a con-name extint type ovs-interface slave-type ovs-port conn.interface ext master extpg
+systemctl restart NetworkManager.service
+```
+
+これらが全て終わった後、外部と疎通するか確認する。時々疎通しなかったりするのでそのときは再起動。
+
+ovsに設定が入っているか確認する。
+
+```bash
+[root@kvm ~]# ovs-vsctl show
+8e228eec-22c1-4012-afaf-1f5ee89aa38c
+    Bridge ext
+        Port ext
+            Interface ext
+                type: internal
+        Port "vlan20"
+            tag: 20
+            Interface "veth20"
+                type: internal
+        Port uplink
+            Interface "enp6s0"
+                type: system
+            Interface "enp4s0"
+                type: system
+    ovs_version: "2.12.0"
+```
+
+### libvirtの設定を作る
+
+ココらへんは公式docを見つつ埋めていく。
+
+```xml
+<network>
+  <name>ext</name>
+  <forward mode='bridge'/>
+  <bridge name='ext'/>
+  <virtualport type='openvswitch'/>
+  <portgroup name='untag' default='yes'>
+  </portgroup>
+  <portgroup name='vlan21'>
+    <vlan>
+      <tag id='21'/>
+    </vlan>
+  </portgroup>
+</network>
+```
+
+```bash
+virsh net-define ext.xml
+virsh net-start ext
+virsh net-autostart ext
+```
+
+### domainが起動することを確認する
+
+virshでもvirt-managerからでもお好みで。
+
+`untag`のnicを選ぶとvlan tagが設定されていない状態になるので
+
+```bash
+nmcli c a type vlan con-name vlan21 ifname enp4s0.21 dev enp4s0 id 21 ipv4.method manual ipv4.address 192.168.21.2/24 ipv4.gateway 192.168.21.1
+```
+
+みたいな感じでvlan intefaceを定義すればOK。
+
+## 注意点
+
+多分ハマりどころはBridge, Port, Interface全てに同名のリソースを作成しないといけないところ。
+
+使わないInterfaceが丸見えなのはちょっと気持ち悪いが、ここらへんは妥協ラインかな。
+
+## NetworkManager-ovsを使う意味
+
+あまりない。強いて言うならNetworkの変更を一元化できるかなくらい。しかし仮にNetworkManagerを使わない場合、`/etc/sysconfig/network-scripts`にひたすら設定を書いていくことになるのでそれはそれでどうなの？という気持ちになる。
+
+なお、NetworkManagerを経由する場合、一部未実装の機能(mtu設定, vlan trunkの範囲指定等)がある。そのため、設定を突き詰める場合はNetworkManagerを経由しないほうが良い。
+
+
+## 参考文献
+
+- [CentOS7 ovs(Open vSwitch)のネットワーク設定方法](https://metonymical.hatenablog.com/entry/2018/12/25/210811)
+- [nm-openvswitch](https://developer.gnome.org/NetworkManager/stable/nm-openvswitch.html)
+- [libvirt](https://libvirt.org/formatnetwork.html)
+- [libnm-core](https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/tree/master/libnm-core)
+
+## その他
+
+作図には[miro](https://miro.com)を使いました。
+
+export default ({ children }) => <Layout meta={meta}>{children}</Layout>
