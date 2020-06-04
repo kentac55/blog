@@ -16,14 +16,12 @@ export const meta = {
 
 ## 鍵のgen/export/import
 
-自分は一つの秘密鍵をLinux/Windows/Macにimportして使っているのでexport, importを使う。
-
-プライベート用と職場用とは分離した方がよい。
+ここでは一つの秘密鍵をLinux/Windows/Macにimportして使うことを想定している。
 
 - `$ gpg --full-gen-key`
     - 鍵を作る
     - bitは4096にする(手動)
-    - passphraseはそのままEnterでつけないこともできる
+    - passphraseを求められる画面でそのままEnterするとpassphrase無しの鍵を生成できる
 - `$ gpg --list-secret-keys --keyid-format LONG`
     - LONG値(`git config`等で使う値)を見る
 - `$ gpg --armor --export [対象]`
@@ -34,7 +32,7 @@ export const meta = {
     - 秘密鍵のexport
 - `$ gpg --import gpg-private.key.backup`
     - 秘密鍵のimport
-    - 多分passphraseを求められる
+    - passphraseを求められる
 - `$ gpg --edit-key [対象]`
     - importした自分の秘密鍵に対して行う
         - importした直後の鍵の信用度は`UNKNOWN`なのでこれを`ULTIMATE`にする
@@ -55,7 +53,9 @@ export const meta = {
 
 ## Gitとの連携
 
-例えば休憩時間に会社のPCからOSSにcommitするみたいなことを考えるとdirectory毎にgpg鍵を切り替える必要があるので以下のようにする。
+自分はプライベート用と職場用それぞれの秘密鍵を使い分けている。
+
+その際、例えば休憩時間に会社のPCからOSSにcommitするみたいなことを考えるとdirectory毎にgpg鍵を切り替える必要があるので以下のようにする。
 
 ### globalのgitconfig
 
@@ -63,10 +63,17 @@ export const meta = {
 - github.comによってhostされているdirectory以下でプライベートで使うGPG鍵を読み込むようにしている
     - 仮に会社のrepositoryがgithub.comを使っている場合でも似たような方法で対応が可能
 - include先のファイルがない場合でもエラーが出ないのでwindows特有のgitconfigを使いたい場合や自宅環境で`.gitconfig.local`がない場合も問題ない
-```
+- 以下の設定を組み合わせることで意図的に除外しない限り、全てのcommitに対してgpg署名を強制させることができる
+    - `commit.gpgsign true`(commitにgpg署名を行う)
+    - `user.useConfigOnly true`(意図しないdirectoryでの誤commitを防ぐ)
+
 `~/.gitconfig`
 
-
+```
+[commit]
+	gpgsign = true
+[user]
+	useConfigOnly = true
 [ghq]
 	root = ~/src
 [include]
@@ -77,6 +84,7 @@ export const meta = {
 [includeif "gitdir:~/.dotfiles/"]
 	path = ~/.gitconfig.identity.default
 ```
+
 ### プライベートで使うGPG鍵の指定
 
 `~/.gitconfig.identity.default`
