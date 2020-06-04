@@ -19,7 +19,11 @@ const Profile: FC = ({}) => {
       <Row align="bottom" className="user">
         <NextLink href="/" passHref>
           <Link>
-            <User src="/assets/avatar.png" name={blogConfig.author}>
+            <User
+              src="/assets/avatar.png"
+              name={blogConfig.author}
+              altText="avatar"
+            >
               {blogConfig.summary}
             </User>
           </Link>
