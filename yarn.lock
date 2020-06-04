@@ -1410,9 +1410,9 @@
   integrity sha512-42xQaQzFOpd2N7b8GgRGvcJ0HftAjLbJNmhZL5RHtl2j6G9rJPopyG+7WnFl0F9131PKj/pGrVQ1bTrsI4wLNQ==
 
 "@zeit-ui/react@^1":
-  version "1.5.0"
-  resolved "https://registry.yarnpkg.com/@zeit-ui/react/-/react-1.5.0.tgz#078e1a3b5188d01644e9985312346029177775bc"
-  integrity sha512-OWwqX4K6Feagf+kyzIJ/w63rbUZviCLumKzgNPZpEAXGF7CPGb8maKchN4z5riKmEM4UbAgjFNUmL/sevHSwVg==
+  version "1.6.2"
+  resolved "https://registry.yarnpkg.com/@zeit-ui/react/-/react-1.6.2.tgz#b21d5575bb1aa319dafcb1d2bb0ca8ae4ae0ab67"
+  integrity sha512-VQstn26nBzfkom/uUkEjpi3h7rVLA2/8AMG1ilvKq1qTrRITQLynivbhx9tJyaCe6I6h+pukG5mOFKeMoiZ5pA==
   dependencies:
     styled-jsx "^3.2.5"
 
