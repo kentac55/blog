@@ -1,0 +1,111 @@
+import Layout from 'lib/components/layout'
+import {} from '@zeit-ui/react'
+
+export const meta = {
+  title: 'GnuPGメモ + Gitとの連携',
+  date: '2020-06-04T20:20:05.0527744+09:00',
+  description: 'gnupgの使い方とgitとの組み合わせ方',
+  image: '',
+  tags: 'gnupg,git'
+}
+
+ググればいろいろ出てくるけど、自分用のまとめが欲しかった為作った。
+
+これをすることでgithubやgitlabでcommitに`Verified`タグを付与することができるし他人の公開鍵をimportすることで
+`git log --show-signature`してcommitの検証を行うことができる。
+
+## 鍵のgen/export/import
+
+自分は一つの秘密鍵をLinux/Windows/Macにimportして使っているのでexport, importを使う。
+
+プライベート用と職場用とは分離した方がよい。
+
+- `$ gpg --full-gen-key`
+    - 鍵を作る
+    - bitは4096にする(手動)
+    - passphraseはそのままEnterでつけないこともできる
+- `$ gpg --list-secret-keys --keyid-format LONG`
+    - LONG値(`git config`等で使う値)を見る
+- `$ gpg --armor --export [対象]`
+    - 公開鍵のexport
+    - `[対象]`の部分はLONG値でもmail addrでもよい
+    - この出力結果をgithub等に登録する
+- `$ gpg --armor --export-secret-keys [対象] > gpg-private.key.backup`
+    - 秘密鍵のexport
+- `$ gpg --import gpg-private.key.backup`
+    - 秘密鍵のimport
+    - 多分passphraseを求められる
+- `$ gpg --edit-key [対象]`
+    - importした自分の秘密鍵に対して行う
+        - importした直後の鍵の信用度は`UNKNOWN`なのでこれを`ULTIMATE`にする
+    - `gpg>`ダイアログが出てくるので`trust`を入力し、最後のpromptで`5`を選ぶ
+
+## 各OSでの使い方
+
+- Linux
+    - デフォで入っているか`gnupg`パッケージを入れることで使える
+    - pinentryはデフォルトでCLI、`gnome-keyring`を入れている場合はGUIが立ち上がる
+        - [公式doc](https://wiki.gnupg.org/GnomeKeyring)を読む感じGUI経由はあまり推奨していないようにも思える？
+- Windows
+    - `Git for windows`をインストールすることで使える
+    - pinentryは同梱の`pinentry.exe`が行う(CLIは無理っぽい)
+- OSX
+    - `gnupg`をbrewから入れることで使える
+    - pinentryはデフォルトでCLI, `pinentry-mac`をbrewから入れている場合はGUIが立ち上がる
+
+## Gitとの連携
+
+例えば休憩時間に会社のPCからOSSにcommitするみたいなことを考えるとdirectory毎にgpg鍵を切り替える必要があるので以下のようにする。
+
+### globalのgitconfig
+
+- ghqのpathを指定
+- github.comによってhostされているdirectory以下でプライベートで使うGPG鍵を読み込むようにしている
+    - 仮に会社のrepositoryがgithub.comを使っている場合でも似たような方法で対応が可能
+- include先のファイルがない場合でもエラーが出ないのでwindows特有のgitconfigを使いたい場合や自宅環境で`.gitconfig.local`がない場合も問題ない
+```
+`~/.gitconfig`
+
+
+[ghq]
+	root = ~/src
+[include]
+	path = ~/.gitconfig.local
+	path = ~/.gitconfig.windows
+[includeif "gitdir:~/src/github.com/"]
+	path = ~/.gitconfig.identity.default
+[includeif "gitdir:~/.dotfiles/"]
+	path = ~/.gitconfig.identity.default
+```
+### プライベートで使うGPG鍵の指定
+
+`~/.gitconfig.identity.default`
+
+```
+[user]
+	name = kentac55
+	email = kentac55 at example.com
+	signingkey = AAAAAAAAAAAAAAAA
+```
+
+### 職場のgit repository hostの指定
+
+`~/.gitconfig.local`(dotfiles管理外)
+
+```
+[includeif "gitdir:~/src/example.com/"]
+	path = ~/.gitconfig.identity.work
+```
+
+### 職場で作ったGPG鍵の指定
+
+`~/.gitconfig.identity.work`(dotfiles管理外)
+
+```
+[user]
+	name = 山田　太郎
+	email = SomeOne@example.com
+	signingkey = AAAAAAAAAAAAAAAA
+```
+
+export default ({ children }) => <Layout meta={meta}>{children}</Layout>
