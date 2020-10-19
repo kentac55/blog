@@ -1,0 +1,185 @@
+import Layout from 'lib/components/layout'
+import {} from '@zeit-ui/react'
+
+export const meta = {
+  title: 'scalamatsuri',
+  date: '2020-10-17 12:04',
+  description: '',
+  image: '',
+  tags: 'scala'
+}
+
+Write your お気持ち.
+
+# ScalaMatsuri
+
+## 自由平等
+
+https://eed3si9n.com/equality/assets/player/KeynoteDHTMLPlayer.html
+
+Guy・Steel(なんかの言語の作者)のOOPSLAでの公演
+
+- 小さい言語: 覚えるのが簡単
+- 大きい言語: いろんな語彙を使える
+
+### 言語の比較
+
+- APL: シンボルが多いがユーザー定義シンボルが作れない
+- LISP: シンボルが少ないがユーザー定義シンボルが作れる
+
+結果、言語が成長できるLISPが生き残った
+
+### Javaを進化可能にするには？
+
+ジェネリック型と演算子のオーバーロードすればよいのではという提言がなされた(Newspeak, scala, haskell作者より)
+
+結果generic型がJava1.5で入った
+
+### 2001年
+
+LL言語登場(実用的な言語が求められ始められる)
+
+### 2007年
+
+Scala登場
+
+- 抽象型
+- 演算子オーバーロード
+
+### 等価性
+
+- 参照等価性
+
+### Javaだと
+
+boxed primiteves 1同士で比較すると何故かtrueになる・・・(中の実装が見えてね？)
+
+## Scalaで解説する、ビジネスパターンによるモデル駆動設計
+
+https://speakerdeck.com/j5ik2o/model-driven-design-with-business-patterns-explained-in-scala
+
+交換(取引)は
+
+- 減少イベント
+- 増加イベント
+
+予約注文の場合とかはモデリングの修正が必要
+
+## modular monolith
+
+密結合・・・本当に密で良いのかわからね
+
+最初はモノリス・・・だけど事業領域が増えてコンテキストを意識した開発したくなった
+
+ただ、マイクロサービスはスタートアップには厳しい
+
+故にモジュラーモノリス(延長線上にマイクロサービス化を狙える)
+
+proto fileはsharedに存在する
+
+## MSP
+
+コード生成するやつ
+
+## Functional
+
+### 関数型
+
+### 型・関数
+
+### 型クラス
+
+型に機能を与える
+
+代数的構造は型クラスがロジックを提供するものになる
+
+半群(Semigroup) = 結合律を満足させる
+
+```scala
+(1 * 2) * 2 == 1 * (2 * 3)  // 結合律
+```
+
+Monoid(SemiGroupの一つ) = 結合律 + 単位元
+
+|type|empty|compibe|
+|---|---|---|
+|int|1| `*` |
+|int|0| `+` |
+
+
+Functor => 恒等関数
+
+結合律 (`f・g`)
+
+Monad(Functorの一つ)
+
+## IntelliJ Plugin
+
+メモリ4G割り当ててる
+
+## 第1級型レベルプログラミング
+
+macro/implicitsはscala3で改善予定
+
+### match型(scala3で導入予定)
+
+### 依存型(研究中)
+
+## Scalaの教育方法(opt みずしまさん x biz たどころさん)
+
+- (bizreach)研修でScala一通り(3日間)やった後Twitter Cloneアプリ作ってラズパイにデプロイとかやった
+    - implicit convertあたりがどうprodコードで使うのかがイメージできなかった
+    - 型クラスとかそういうはやらない(あくまでJavaとの違いとかそういうところ)
+- (opt)1week 座学、1week play、1month scala開発演習(チーム)
+- 技術研修でガッツリやらないで残りはOJT+メンターでも良いのかなと
+- リファクタリングを通じてScalaに慣れてもらうとかも
+- ペアプロ
+- Scala相談会とかを月イチでやっていたりする(月イチだと粒度が大きくなりがちなので週一に変えるよてい)
+- Scala特有の問題というよりもエンジニア共通の問題ですねえ
+
+## akka-typedによって構築されたリアクティブシステム云々(加藤さん x 藤井さん)
+
+https://github.com/j5ik2o/motherbase
+
+## 圏論
+
+- https://www.slideshare.net/100005930379759/scala-scala
+- https://docs.google.com/presentation/d/1JagrV77PxW9ikFA-sVtBTiSk-Y5m6CC_hdFNkg3qAwY
+
+- `∀`(all/any): 任意の
+    - `∀x ∈ R`: 全ての実数(`∀x`のxは訳さない)
+    - `[A](x: A): A`: 多相関数・ジェネリクス・パラメータ多相
+- `∃`(exists): ある
+    - 圏論では ∃・ g・fが合成射になる
+- `f ∈ Hom(A, B) => ∀a ∈ Hom(X, A), ∃b ∈ Hom(X, B), b = f o a`
+    - 対象Aと対象Bの間の全ての射の中にfが含まれれば、
+    - 対象Xと対象Aの間の全ての射に対して
+    - ある対象Xと対象Bの間にある射が存在して
+    - => `b=f o a`: 合成射
+
+合成射が作られなければ、圏論では扱えない
+
+副作用のある関数は圏として扱えない→それを扱うのがmonad
+
+## 脆弱性対策のための Clean Architecture
+
+domain層やusecase層には脆弱性を出さないようにdendency libraryを極力少なくする
+
+sbtの機能で依存を厳し目に遮って、影響を外側の層で食い止める構造にする
+
+## Scala転職市場動向
+
+Scala使うと年収上がるって本当？
+
+竹下さん(レバレジーズ)
+
+レバレジーズの統計情報使ってる
+
+データ的には500-800万
+
+求人や案件は多いが、転職希望者やフリーランスが少ないっぽい数字になっている。
+
+日本だと1位はPython, 2位はGolang, 3位がScala
+
+
+export default ({ children }) => <Layout meta={meta}>{children}</Layout>
