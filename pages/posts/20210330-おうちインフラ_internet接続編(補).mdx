@@ -1,0 +1,78 @@
+import Layout from 'lib/components/layout'
+import { Image } from '@zeit-ui/react'
+
+export const meta = {
+  title: 'おうちインフラ_Internet接続編(補)',
+  date: '2021-03-30 17:11',
+  description: 'IPoEオプションでハマった時の話について補足',
+  image: '',
+  tags: 'おうちインフラ,network'
+}
+
+すんごい久しぶりの投稿になってしまった。
+
+今回はインターネット接続に纏わるすごい短い話。
+
+## DSLite方式でIPoEしてたら任天堂スイッチが接続できなくなった！
+
+家族が使うSwitch(任天堂の方)がInternet接続できないという苦情があった。
+
+自宅には2つSwitchあったのだが、両方とも接続できなかったため調査開始。
+
+試しにPPPoE接続に切り替えてみた所正常に通信ができることが分かった。
+
+IIJmioが提供するIPoEサービスはインターネットマルチフィード社が提供する[transix IPv4接続(DS-Lite)](https://www.mfeed.ad.jp/transix/dslite/dslite.html)を使用している。このCGNATで相性問題？が発生しているようだった。
+
+基本的には回線速度が早いIPoE接続を使いつつ、特定要件の場合のみPPPoE回線に切り替えていくことにした。
+
+今回はその手順に関するメモ。
+
+なおこれに関しては[公式ページ](https://www.iijmio.jp/guide/outline/ipv6/ipv6_access/dslite/#attention)の注意事項にも書かれている
+
+> DS-LiteによるIPv4接続をご利用の場合、NATを利用して通信を行います。NATを利用した環境では、一部のソフトウェアやサービスが正常にご利用いただけない可能性がございます。
+
+## 解決方法
+
+解決方法として以下の2つを検討した。
+
+- 特定のNetworkのinternet出口をPPPoE回線にする
+- Networkの一部のアドレス帯のinternet出口をPPPoE回線にする
+
+今回は後者を選択した。理由は
+
+- 大抵の機器はVLANに対応していないため、WiFiにtrunkを流すのは現実的ではない
+- AccessとしてWiFi接続する機器を全部PPPoEにしてもいいが、例えばAmazon FireTVのように大量データを受信する機器が有る場合厳しい
+
+## 実装
+
+以前の投稿から画像を拝借。
+
+<Image width="888" height="520" alt="全体図" src="/images/20200607_210722.png" />
+
+NVR700Wでfilterを用意し、例えばVLAN10(`192.168.10.0/24`, WiFi用として運用中)のうちの一部(例えば`192.168.10.64/26`)のデフォルトルートを`pp 1`(PPPoE Interface)に向ける感じにする。
+
+```
+ip route default gateway pp 1 filter 500001 hide gateway tunnel 1 filter 500005 hide gateway tunnel 2 filter 500005 hide
+ip filter 500001 pass 192.168.10.64/26 * * * *
+ip filter 500005 pass * * * * *
+dns server select 500001 1.1.1.1 8.8.8.8 any . restrict pp 1
+```
+
+`ip route`コマンドは記述された順に評価されていく([9.1.7 IP の静的経路情報の設定](http://www.rtpro.yamaha.co.jp/RT/manual/rt-common/ip/ip_route.html))為、例えば`192.168.10.65`のホストは`pp 1`にトラフィックが向く。一方で`192.168.10.2`のホストは`pp 1`のフィルタにマッチしない為、次のgateway(ここでは`tunnel 1`)が選択される。
+
+IPoE接続の場合IPv6がenableな為、dnsはipv6のものを使っている。しかしPPPoEの場合IPv6は使用できないため(確かIPv6 IPoE接続を使用している場合IPv6 PPPoEは無効化されたような気がする)、別途public DNSを指定している。
+
+## これにより
+
+弊環境では利便性を考慮して各NW(`/24`)の後半(`/25`)はDHCPによるIPアドレス払い出しを行っているため、雑に接続した場合は自動的にIPoEのinternet出口を使い快適なインターネットライフをご提供。
+もしPPPoE接続を明示的に使いたい場合は`192.168.10.64/26`からIPアドレスを払い出し固定IPアドレスとして機器をセットアップすればノープロブレム！
+
+## もしかしたら
+
+そもそも指定したPortのみの通信に限定されるとかだったら同じくインターネットマルチフィード社提供の[transix IPv4接続（固定IP）](https://www.mfeed.ad.jp/transix/staticip/)を使ったらこんなことをしなくても良いのかなとも思っている(まだ試してはいない)。
+
+これを使用したサービスは私が知る限りインターリンク社の[フレッツ接続 ZOOT NATIVE（ズットネイティブ） IPv4固定IP1個](https://www.interlink.or.jp/service/zootnative/koteiip.html)のみ(だいぶニッチなニーズなのだろう)。いつか試してみたい。
+
+
+export default ({ children }) => <Layout meta={meta}>{children}</Layout>
+
