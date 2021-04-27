@@ -1,0 +1,266 @@
+import Layout from 'lib/components/layout'
+import {} from '@zeit-ui/react'
+
+export const meta = {
+  title: 'systemd-homed調査',
+  date: '2021-04-04 17:50',
+  description: '',
+  image: '',
+  tags: 'systemd, linux'
+}
+
+最近知ったので試してみた。
+
+## 概要
+
+systemdが提供する機能の一つ。`useradd`(`luseradd`)の代替として使用できる。
+
+home dirの暗号化に標準対応し、例えばユーザーAがroot権限を使ってユーザーBのhome dirをチラ見みたいなことができなくなるらしい。
+
+## 環境
+
+- linux: `Linux pc1-arch 5.11.11-arch1-1 #1 SMP PREEMPT Tue, 30 Mar 2021 14:10:17 +0000 x86_64 GNU/Linux`
+- systemd: 248
+
+## 使ってみる
+
+ここでは`test1`ユーザーを新たに作るとする。
+
+事前に`systemd-homed`を起動しておく。
+
+```bash
+$ sudo systemctl enable --now systemd-homed
+```
+
+### 作成
+
+```bash
+$ sudo homectl create test1
+ ... passwordを入れる
+```
+
+このままでは数十GBの巨大ファイルができるため、以下のコマンドでシュリンクする。
+
+```bash
+$ sudo homectl resize test1 3G
+ ... passwordを入れる
+```
+
+### 確認
+
+`homectl list`で管理下のユーザーを確認できる。今まで通り`useradd`, `luseradd`等で作ったユーザーは表示されない。`homectl inspect`で詳細な情報を得ることも可能。LUKSで暗号化されているようだ。
+
+```bash
+$ homectl list
+NAME  UID   GID   STATE    REALNAME HOME        SHELL
+test1 60510 60510 inactive test1    /home/test1 /bin/bash
+
+1 home areas listed.
+
+$ homectl inspect test1
+   User name: test1
+       State: active
+ Disposition: regular
+ Last Change: Sun 2021-04-04 16:06:38 JST
+    Login OK: yes
+ Password OK: yes
+         UID: 60510
+         GID: 60510 (test1)
+   Directory: /home/test1
+     Storage: luks (strong encryption)
+  Image Path: /home/test1.home
+   Removable: no
+       Shell: /bin/bash
+LUKS Discard: online=no offline=yes
+   LUKS UUID: 123744e9d35740529bca60e35511c678
+   Part UUID: f391b10334ad407fa72e512f19880547
+     FS UUID: 187fd1735e9a40fa81d51e37bad3cbd8
+ File System: btrfs
+ LUKS Cipher: aes
+ Cipher Mode: xts-plain64
+  Volume Key: 256bit
+ Mount Flags: nosuid nodev exec
+   Disk Size: 40.2G
+  Disk Usage: 30.0M (= 0.1%)
+   Disk Free: 40.1G (= 99.9%)
+  Disk Floor: 273.0M
+Disk Ceiling: 47.6G
+  Good Auth.: 1
+   Last Good: Sun 2021-04-04 16:07:56 JST
+    Next Try: anytime
+ Auth. Limit: 30 attempts per 1min
+   Passwords: 1
+  Local Sig.: yes
+     Service: io.systemd.Home
+```
+
+今まで使われてきた`/etc/passwd`や`/etc/shadow`には記載されない。home dirにもディレクトリが存在せず謎のファイルが配置されている。
+
+```bash
+$ cat /etc/passwd | grep "test1"  # 無い
+$ sudo cat /etc/shadow | grep "test1"  # 無い
+$ su test1  # ログインできない
+Password:
+su: Authentication service cannot retrieve authentication info
+$ ls /home  # 謎のファイルが見つかる
+kc5m test1.home
+```
+
+`file`コマンドで確認すると謎のファイルがイメージファイルということが分かる。
+
+```bash
+$ sudo file /home/test1.home
+/home/test1.home: DOS/MBR boot sector; partition 1 : ID=0xee, start-CHS (0x0,0,2), end-CHS (0x3ff,255,63), startsector 1, 6291455 sectors, extended partition table (last)
+```
+
+マウントして中身見れるのでは？と考えloopback deviceにして中身を確認してみる。GPTのpartition codeに8312が指定されているが、これはgdiskのdbに収容されていない番号だった。inspectすると`linux user's home`と表示された。なるほど。[公式ドキュメント](https://systemd.io/HOME_DIRECTORY/)にもこのUUIDに限定すると記載されていた。
+
+```bash
+$ sudo losetup -f /tmp/test1.home
+$ sudo gdisk /dev/loop0
+GPT fdisk (gdisk) version 1.0.7
+
+Partition table scan:
+  MBR: protective
+  BSD: not present
+  APM: not present
+  GPT: present
+
+Found valid GPT with protective MBR; using GPT.
+
+Command (? for help): p
+Disk /dev/loop0: 6291456 sectors, 3.0 GiB
+Sector size (logical/physical): 512/512 bytes
+Disk identifier (GUID): 622B8D01-67EB-9749-81D5-5662140E54C6
+Partition table holds up to 128 entries
+Main partition table begins at sector 2 and ends at sector 33
+First usable sector is 2048, last usable sector is 6291422
+Partitions will be aligned on 2048-sector boundaries
+Total free space is 0 sectors (0 bytes)
+
+Number  Start (sector)    End (sector)  Size       Code  Name
+   1            2048         6291422   3.0 GiB     8312  test1
+
+Command (? for help): l
+Type search string, or <Enter> to show all codes: 8312
+
+Command (? for help): i
+Using 1
+Partition GUID code: 773F91EF-66D4-49B5-BD83-D683BF40AD16 (Linux user's home)
+Partition unique GUID: F391B103-34AD-407F-A72E-512F19880547
+First sector: 2048 (at 1024.0 KiB)
+Last sector: 6291422 (at 3.0 GiB)
+Partition size: 6289375 sectors (3.0 GiB)
+Attribute flags: 0000000000000000
+Partition name: 'test1'
+```
+
+### ログインしてみる
+
+なんとroot経由で`su`使ってログインできない。これはすごい！
+
+```bash
+$ sudo -i
+# su test1
+su: Authentication service cannot retrieve authentication info
+```
+
+別のtty(`/dev/tty2`)でtest1をログインしてみる。するとhome directoryがmountされた。すごい！
+
+```bash
+$ mount | grep "test1"
+/dev/mapper/home-test1 on /home/test1 type btrfs (rw,nosuid,nodev,relatime,ssd,noacl,space_cache,subvolid=256,subvol=/test1)
+```
+
+`/home`はxfsなのにも関わらずbtrfsでマウントされている。`/dev/mapper`をヒントに探っていく。推測するにloop deviceをdm-cryptで暗号化&device mappingを行っているようだ。
+
+```bash
+$ ls -la /dev/mapper
+total 0
+crw-------  1 root root 10, 236 Apr  4 16:06 control
+lrwxrwxrwx  1 root root       7 Apr  4 16:07 home-test1 -> ../dm-0
+$ ls -la /dev/dm-0
+brw-rw---- 1 root disk 254, 0 Apr  4 16:07 /dev/dm-0
+$ sudo dmsetup ls --tree
+home-test1 (254:0)
+ └─ (7:0)
+$ sudo dmsetup table
+home-test1: 0 84291189 crypt aes-xts-plain64 :32:logon:cryptsetup:123744e9-d357-4052-9bca-60e35511c678-d0 0 7:0 32768 1 allow_discards
+$ sudo dmsetup info
+Name:              home-test1
+State:             ACTIVE (DEFERRED REMOVE)
+Read Ahead:        256
+Tables present:    LIVE
+Open count:        1
+Event number:      0
+Major, minor:      254, 0
+Number of targets: 1
+UUID: CRYPT-LUKS2-123744e9d35740529bca60e35511c678-home-test1
+$ losetup -a
+/dev/loop0: [66310]:269425728 (/home/test1.home), offset 1048576, sizelimit 3220160000
+```
+
+`test1`のhome directoryには`.identity`ファイルが生成される。活用方法については要調査。
+
+```json
+{
+        "disposition" : "regular",
+        "lastChangeUSec" : 1617555966190004,
+        "lastPasswordChangeUSec" : 1617519998288345,
+        "perMachine" : [
+                {
+                        "diskSize" : 3221225472,
+                        "matchMachineId" : [
+                                "9eec291300664784b1add07ec1052bbf"
+                        ]
+                }
+        ],
+        "privileged" : {
+                "hashedPassword" : [
+                        "$y$j9T$09OCTU0BguRgNxhxKIM441$mltY177Al6G.FXodAF8cGtjIF/FHLsyx1F8MpPnXou7"
+                ]
+        },
+        "signature" : [
+                {
+                        "data" : "RAjQ1Nt2TYPT6yZo5JeY8kHstnQuwqOwGe0Vk5kEhKrlvMEOxUuSviTBfeatDpxn3R0ZVHrCsP7bXQ9xr1G8DQ==",
+                        "key" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA2IQ+t0WaSHqBydATaNhWNuDpG7QUXjUeIM0SrSsMhYc=\n-----END PUBLIC KEY-----\n"
+                }
+        ],
+        "userName" : "test1"
+}
+```
+
+### 削除
+
+関連リソースが全て削除される。
+
+```bash
+$ sudo homectl remove test1
+$ homectl list
+No home areas.
+$ ls /home
+kc5m
+```
+
+## 所感
+
+- メリット
+    - diskの暗号化・復号化・マウントを全自動で行ってくれるのが非常に便利
+    - 一度rootを取得してしまえば他のユーザーの情報を触り放題というのはいかがなものかと思っていたが、systemd-homedを使用することでそのへんを解決できる
+- デメリット
+    - `.identity`消しそう
+    - systemdへの依存が深まる(systemd-networkd等他のdaemonと比較して他daemonとの相乗効果が薄そう)
+
+## 今後
+
+- ユーザー作成時にgroupの指定やリソース上限の設定も行えるようなのでもっといろいろできそうな感じがある。
+- FIDO2やpkcs11の認証も行えるようなのでもう少し調べてみたい(yubikeyと組み合わせると凄そう)。
+- create時の挙動やログイン時の挙動について気になったのでソースコードから読んでみたい。
+
+## 参考文献
+
+- [Home Directories](https://systemd.io/HOME_DIRECTORY/)
+- [systemd-homed - ArchWiki](https://wiki.archlinux.jp/index.php/Systemd-homed)
+- [2020年はsystemd-homedの登場でLinuxのユーザー管理が大きく変わるぞ](https://qiita.com/onokatio/items/dbae4afe7fabd2602545)
+
+export default ({ children }) => <Layout meta={meta}>{children}</Layout>
