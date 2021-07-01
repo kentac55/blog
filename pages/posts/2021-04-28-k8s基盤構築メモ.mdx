@@ -13,23 +13,28 @@ export const meta = {
 
 今回はmetalLBも入れる
 
+## 更新日時
+
+- 2021/04/28 初版
+- 2021/07/01 k8sをv1.21.2に, 色々ラリっていたのを修正
+
 ## 目次
 
 1. 各種データとか
-1. k8s構築(calico, kubeadmのあれこれ)
-1. LB構築
+1. テンプレートdomainの作成
 1. router構築
+1. LB構築
+1. k8s構築(calico, kubeadmのあれこれ)
 1. metal LBデプロイ
-1. 今後
 
 ## 各種データとか
 
 1. version
 
-    - kubeadm/kubelet/kubectl: v1.20
+    - kubeadm/kubelet/kubectl: v1.21
     - HAProxy: v2.0.13
-    - MetalLB: v0.9.6
-    - bird: v2.0.7
+    - MetalLB: v0.10.2
+    - bird: v2.0.8
 
 1. network表
 
@@ -62,7 +67,7 @@ export const meta = {
 
     ただし、`k8s-lb1`, `k8s-lb2`, `k8s-rt1`, `k8s-rt2`は予定(時間あればVRRPでLBとrouterを冗長化したい)
 
-    `kvm`, `k8s-rt`のみfedora33, 他はubuntu20.04
+    `kvm`, `k8s-rt`のみfedora34, 他はubuntu20.04
 
 1. 他
     - CRIプラグイン: container.io(選定理由は特に無い)
@@ -72,181 +77,28 @@ export const meta = {
         - frrは諦めた
     - AS番号: 65000(router側), 65001(metal LB側)
 
-## k8s構築
+## テンプレートdomainの作成
 
-1. 空のVMを作る
+### Ubuntu20.04
+
+1. 空のdomainを作る
 1. 適当なUbuntu ISOからubuntuをinstallする
-1. k8sのVMの共通作業用にVMを1つクローンする
-1. 以下の共通部分を作業する
+1. datetime(`datetimectl set-timezone Asia/Tokyo`), ssh(`cat ~/.ssh/authorized_keys`)を確認する
+    - datetimeがズレているとBGPセッションがESTABLISHEDにならないので注意
 
-    ```bash
-    # 既存パッケージの更新
-    $ sudo apt update
-    $ sudo apt upgrade
-    $ sudo apt clean
-    $ sudo apt autoremove
-    # swapを切る
-    $ sudo swapoff -a
-    # fstabからswapを無効にする
-    $ sudo vim /etc/fstab
-    # 余計なdaemonを止める
-    $ sudo systemctl disable --now snapd.service snapd.socket unattended-upgrades.service
-    $ cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
-    overlay
-    br_netfilter
-    EOF
-    # kernel moduleを読み込む
-    $ sudo modprobe overlay
-    $ sudo modprobe br_netfilter
-    # k8s稼働に必要なカーネルパラメータを変更する
-    $ cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
-    net.bridge.bridge-nf-call-iptables  = 1
-    net.ipv4.ip_forward                 = 1
-    net.bridge.bridge-nf-call-ip6tables = 1
-    EOF
-    $ sudo sysctl --system
-    # container.ioを入れる
-    $ sudo apt-get install     apt-transport-https     ca-certificates     curl     gnupg     lsb-release
-    $ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-    $ echo   "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
-       $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    $ sudo apt update
-    $ sudo apt install containerd.io
-    $ sudo mkdir -p /etc/containerd
-    # configの作成と反映
-    $ containerd config default | sudo tee /etc/containerd/config.toml
-    $ sudo systemctl restart containerd
-    # kubelet, kubeadm, kubectlを入れる
-    $ sudo apt-get update
-    $ sudo apt-get install -y apt-transport-https ca-certificates curl
-    $ sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
-    $ echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-    $ sudo apt update
-    $ sudo apt install -y kubelet kubeadm kubectl
-    # バージョンを固定する
-    $ sudo apt-mark hold kubelet kubeadm kubectl
-    # 止める
-    $ sudo systemctl poweroff
-    ```
+### Fedora34
 
-1. 上記のVMを6つにクローンする
-1. 各VMでIPアドレス/hostnameを設定する
-
-    ```bash
-    $ sudo vim /etc/netplan/00-installer-config.yaml
-    $ sudo netplan apply
-    $ sudo hostnamectl set-hostname k8s-c1
-    ```
-
-1. controller1号機で初期セットアップを行う
-
-    1. kubeadm initを行う
-
-        ```bash
-        $ sudo kubeadm init --control-plane-endpoint="192.168.21.10:6443" --apiserver-advertise-address="192.168.21.11" --kubernetes-version="v1.20.5" --pod-network-cidr="10.255.0.0/16" --upload-certs | sudo tee -a /etc/kubernetes/kubeadm-init.result
-        ```
-
-    1. calicoを入れる
-
-        ```bash
-        $ wget https://docs.projectcalico.org/manifests/calico.yaml
-        # L3672あたりのCALICO_IPV4POOL_CIDRのコメント化を解除し10.255.0.0/16を入れる(--pod-network-cidrで指定した値と同じやつ)
-        $ vim calico.yaml
-        $ kubectl apply -f calico.yaml
-        ```
-
-    1. kube-systemのnamespaceに所属するpodが全てrunningになるまで待つ
-
-        ```bash
-        $ kubectl get pods -n kube-system -o wide
-        ```
-
-    1. お手元マシンで動かすように情報を取得しておく
-
-        ```bash
-        $ kubectl config view --raw
-        ```
-
-1. (OPTIONAL)お手元マシンに上記configをmergeする(ここではcontext名を`lab1`とする)
-
-    ```bash
-    # cluster/context/userをmergeする
-    $ vim .kube/config
-    ```
-
-## LB構築
-
-1. k8s構築で作ったUbuntu20.04のVMをLB用に1つクローンする
-1. 以下のように作業する
-
-    ```bash
-    # IPアドレス/hostnameを設定する
-    $ sudo vim /etc/netplan/00-installer-config.yaml
-    $ sudo netplan apply
-    $ sudo hostnamectl set-hostname k8s-c1
-    # HAProxyのインストール
-    $ sudo apt install haproxy
-    # configの設定
-    $ sudo mv /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.old
-    $ cat <<EOF | sudo tee /etc/haproxy/haproxy.cfg
-    global
-            log /dev/log    local0
-            log /dev/log    local1 notice
-            chroot /var/lib/haproxy
-            stats timeout 30s
-            user haproxy
-            group haproxy
-            daemon
-
-    defaults
-            log     global
-            mode    tcp
-            option  tcplog
-            option  dontlognull
-            timeout connect 5000
-            timeout client  50000
-            timeout server  50000
-
-    frontend k8s_frontend
-            bind 192.168.21.10:6443
-            default_backend k8s_backend
-
-    backend k8s_backend
-            balance roundrobin
-            mode tcp
-            server k8s-c1 192.168.21.11:6443 check inter 1000
-            server k8s-c2 192.168.21.12:6443 check inter 1000
-            server k8s-c3 192.168.21.13:6443 check inter 1000
-
-    listen stats
-            bind *:1936
-            mode http
-            stats enable
-            stats refresh 15s
-            stats show-legends
-            stats show-node
-            stats uri /
-    EOF
-    $ sudo vim /etc/haproxy/haproxy.cfg
-    # カーネルパラメータを変更する
-    $ cat <<EOF | sudo tee /etc/sysctl.d/00-haproxy.conf
-    net.ipv4.ip_nonlocal_bind = 1
-    EOF
-    $ sudo sysctl --system
-    # HAProxyを有効化する
-    $ sudo systemctl enable --now haproxy
-    ```
-
-1. stats(`http://192.168.21.10:1936`)を見てエラーが出ていないことを確認する
+1. 空のdomainを作る
+1. 適当なfedora34 ISOからfedoraをinstallする
+1. datetime(`datetimectl set-timezone Asia/Tokyo`), ssh(`cat ~/.ssh/authorized_keys`)を確認する
+    - datetimeがズレているとBGPセッションがESTABLISHEDにならないので注意
 
 ## router構築
 
 metal LBをL3モードで動かすためにBGPを話すrouterを用意する
 
-1. L3SWにログインして192.168.22.0/24のgatewayを192.168.21.20にするstatic routeを追加する(Cisco IOSなら`ip route 192.168.22.0 255.255.255.0 192.168.21.20`とか)
-1. 空のVMを作る
-1. 適当なfedora33 ISOからfedoraをinstallする
-1. クローンする
+1. Gateway(今回の場合L3SW)にログインして`192.168.22.0/24`のgatewayを`192.168.21.20`にするstatic routeを追加する(Cisco IOSなら`ip route 192.168.22.0 255.255.255.0 192.168.21.20`とか)
+1. Fedoraのテンプレートdomainをクローンする
 1. 以下のように作業する
 
     ```bash
@@ -350,6 +202,171 @@ metal LBをL3モードで動かすためにBGPを話すrouterを用意する
     $ exit
     ```
 
+## LB構築
+
+1. k8s構築で作ったUbuntu20.04のdomainをLB用に1つクローンする
+1. 以下のように作業する
+
+    ```bash
+    # IPアドレス/hostnameを設定する
+    $ sudo vim /etc/netplan/00-installer-config.yaml
+    $ sudo netplan apply
+    $ sudo hostnamectl set-hostname k8s-c1
+    # HAProxyのインストール
+    $ sudo apt install haproxy
+    # configの設定
+    $ sudo mv /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.old
+    $ cat <<EOF | sudo tee /etc/haproxy/haproxy.cfg
+    global
+            log /dev/log    local0
+            log /dev/log    local1 notice
+            chroot /var/lib/haproxy
+            stats timeout 30s
+            user haproxy
+            group haproxy
+            daemon
+
+    defaults
+            log     global
+            mode    tcp
+            option  tcplog
+            option  dontlognull
+            timeout connect 5000
+            timeout client  50000
+            timeout server  50000
+
+    frontend k8s_frontend
+            bind 192.168.21.10:6443
+            default_backend k8s_backend
+
+    backend k8s_backend
+            balance roundrobin
+            mode tcp
+            server k8s-c1 192.168.21.11:6443 check inter 1000
+            server k8s-c2 192.168.21.12:6443 check inter 1000
+            server k8s-c3 192.168.21.13:6443 check inter 1000
+
+    listen stats
+            bind *:1936
+            mode http
+            stats enable
+            stats refresh 15s
+            stats show-legends
+            stats show-node
+            stats uri /
+    EOF
+    $ sudo vim /etc/haproxy/haproxy.cfg
+    # カーネルパラメータを変更する
+    $ cat <<EOF | sudo tee /etc/sysctl.d/00-haproxy.conf
+    net.ipv4.ip_nonlocal_bind = 1
+    EOF
+    $ sudo sysctl --system
+    # HAProxyを有効化する
+    $ sudo systemctl enable --now haproxy
+    ```
+
+1. stats(`http://192.168.21.10:1936`)が見えることを確認する
+
+## k8s構築
+
+1. テンプレート用Ubuntu20.04からk8s共通用にdomainを1つcloneする
+1. 以下の共通部分を作業する
+
+    ```bash
+    # 既存パッケージの更新
+    $ sudo apt update
+    $ sudo apt upgrade
+    $ sudo apt clean
+    $ sudo apt autoremove
+    # swapを切る
+    $ sudo swapoff -a
+    # fstabからswapを無効にする
+    $ sudo vim /etc/fstab
+    # 余計なdaemonを止める
+    $ sudo systemctl disable --now snapd.service snapd.socket unattended-upgrades.service
+    $ cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
+    overlay
+    br_netfilter
+    EOF
+    # kernel moduleを読み込む
+    $ sudo modprobe overlay
+    $ sudo modprobe br_netfilter
+    # k8s稼働に必要なカーネルパラメータを変更する
+    $ cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+    net.bridge.bridge-nf-call-iptables  = 1
+    net.ipv4.ip_forward                 = 1
+    net.bridge.bridge-nf-call-ip6tables = 1
+    EOF
+    $ sudo sysctl --system
+    # container.ioを入れる
+    $ sudo apt-get install     apt-transport-https     ca-certificates     curl     gnupg     lsb-release
+    $ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    $ echo   "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+       $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    $ sudo apt update
+    $ sudo apt install containerd.io
+    $ sudo mkdir -p /etc/containerd
+    # configの作成と反映
+    $ containerd config default | sudo tee /etc/containerd/config.toml
+    $ sudo systemctl restart containerd
+    # kubelet, kubeadm, kubectlを入れる
+    $ sudo apt-get update
+    $ sudo apt-get install -y apt-transport-https ca-certificates curl
+    $ sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    $ echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    $ sudo apt update
+    $ sudo apt install -y kubelet kubeadm kubectl
+    # バージョンを固定する
+    $ sudo apt-mark hold kubelet kubeadm kubectl
+    # 止める
+    $ sudo systemctl poweroff
+    ```
+
+1. 上記のdomainを6つにクローンする
+1. 各domainでIPアドレス/hostnameを設定する
+
+    ```bash
+    $ sudo vim /etc/netplan/00-installer-config.yaml
+    $ sudo netplan apply
+    $ sudo hostnamectl set-hostname k8s-c1
+    ```
+
+1. controller1号機で初期セットアップを行う
+
+    1. kubeadm initを行う
+
+        ```bash
+        $ sudo kubeadm init --control-plane-endpoint="192.168.21.10:6443" --apiserver-advertise-address="192.168.21.11" --kubernetes-version="v1.21.2" --pod-network-cidr="10.255.0.0/16" --upload-certs | sudo tee -a /etc/kubernetes/kubeadm-init.result
+        ```
+
+    1. calicoを入れる
+
+        ```bash
+        $ wget https://docs.projectcalico.org/manifests/calico.yaml
+        # L3672あたりのCALICO_IPV4POOL_CIDRのコメント化を解除し10.255.0.0/16を入れる(--pod-network-cidrで指定した値と同じやつ)
+        $ vim calico.yaml
+        $ kubectl apply -f calico.yaml
+        ```
+
+    1. kube-systemのnamespaceに所属するpodが全てrunningになるまで待つ
+
+        ```bash
+        $ kubectl get pods -n kube-system -o wide
+        ```
+
+    1. お手元マシンで動かすように情報を取得しておく
+
+        ```bash
+        $ kubectl config view --raw
+        ```
+
+1. (OPTIONAL)お手元マシンに上記configをmergeする(ここではcontext名を`lab1`とする)
+
+    ```bash
+    # cluster/context/userをmergeする
+    $ vim .kube/config
+    ```
+
 ## metal LBデプロイ
 
 1. kubeadm(contextの向き先は`lab1`)が使える環境で以下のファイルを作成する
@@ -359,9 +376,8 @@ metal LBをL3モードで動かすためにBGPを話すrouterを用意する
         namespace: metallb-system
 
         resources:
-          - github.com/metallb/metallb//manifests?ref=v0.9.6
+          - github.com/metallb/metallb//manifests?ref=v0.10.2
           - configmap.yml
-          - secret.yml
         ```
     - configmap.yml
         ```yaml
@@ -385,21 +401,9 @@ metal LBをL3モードで動かすためにBGPを話すrouterを用意する
               - 192.168.22.0/24
               avoid-buggy-ips: true
         ```
-    - secret.yml
-        ```yaml
-        ---
-        apiVersion: v1
-        kind: Secret
-        metadata:
-          name: memberlist
-        type: Opaque
-        data:
-          secretkey: |
-            # ここに`openssl rand -base64 128`の結果を入れる
-        ```
 
-1. `kustomize build ./ | kubectl apply --server-side -f -`を実行する
-    - kubectl v1.21以降は`kubectl -k --server-side -f`でいける([ref](https://github.com/kubernetes/kubernetes/pull/98946))
+1. `kubectl apply -k . --server-side`を実行する
+    - kubectl v1.21未満の場合は`kustomize build ./ | kubectl apply --server-side -f -`([ref](https://github.com/kubernetes/kubernetes/pull/98946))
 1. `k8s-rt`にログインし以下のコマンドを叩いて全てのBGPセッションがESTABLISHEDになっていることを確認する
     ```bash
     $ sudo birdc
