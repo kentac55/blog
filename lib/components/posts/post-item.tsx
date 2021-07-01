@@ -16,7 +16,7 @@ type PageData = {
 }
 
 const getDateString = (date: string): string => {
-  const options = {
+  const options: Intl.DateTimeFormatOptions = {
     weekday: 'short',
     year: 'numeric',
     month: 'long',
