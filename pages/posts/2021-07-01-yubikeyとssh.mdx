@@ -1,0 +1,176 @@
+import Layout from 'lib/components/layout'
+import {} from '@zeit-ui/react'
+
+export const meta = {
+  title: 'yubikeyとssh',
+  date: '2021-07-01 22:12',
+  description: '',
+  image: '',
+  tags: 'yubikey, security, ssh'
+}
+
+市井の人々に散々遊ばれたyubikeyであるが、自分はまだそこまで遊んでいなかったのでこれから遊ぶぞ！
+
+今回はsshを様々な方法で行う。
+
+大きく分けて以下の方法がある
+
+- YubiCloudを使う
+- Challenge-Response(HMAC-SHA1)を使う
+- FIDO2/U2Fプロトコルを使う
+- PIVを使う
+- GnuPGを使う
+
+## YubiCloudを使う
+
+### 概要
+
+- Yubikeyを製造・販売するYubicoはYubico Cloudという検証サーバーを動かしている。Yubicoは製造したYubikeyの秘密鍵を保持している(ユーザーですら見れない)ため、その情報を使って検証を行うことが可能になっている
+- Yubico Cloudへ確認する方法はHTTPSとHTTP+HMACの2通りが存在する
+- HTTP+HMAC方式を使う場合、事前に[YubiCloud](https://upgrade.yubico.com/getapikey/)からidとseckeyを引っ張ってくる必要がある
+- 使用の際はYubicoPAMというPAMモジュールを使用する
+
+### セットアップ
+
+1. 接続方法に応じて`/etc/pam.d/sshd` の **先頭** に行を足す([解説](https://wiki.archlinux.jp/index.php/Yubikey#.E8.A7.A3.E8.AA.AC))
+    - HTTPS
+        ```
+        auth      required pam_yubico.so id=1
+        ```
+    - HTTP+HMAC
+        ```
+        auth      required pam_yubico.so id=nnnnn key=...+U7789ak=
+        ```
+
+### 接続時
+
+1. サーバーをインターネットに接続する
+1. クライアント側にyubikeyを刺す
+1. passwordを聞かれたタイミングでそのユーザーのpasswordを入力する
+1. **ENTERを押さずに** Yubikeyに触る(yubikeyのOTPが末尾で改行を入力する)
+
+## Challenge-Response(HMAC-SHA1)を使う
+
+### 概要
+
+- 同Yubico Cloudと同様、YubicoPAMを使用する
+- インターネット接続を必要としない
+- ただしサーバー側にyubikeyを刺す必要があり・・・
+
+### セットアップ
+
+1. 最初のチャレンジを取得する(slot2に書き込む)
+    ```bash
+    $ ykpamcfg -2
+    ```
+1. `/etc/pam.d/sshd` に以下の行を足す
+    ```
+    auth      required  pam_yubico.so mode=challenge-response
+    ```
+
+### 接続時
+
+1. サーバーにyubikeyを刺す
+1. 普通にpasswordを入れてENTER
+1. 自動的ににyubico.pamを使って検証が行われる
+
+## FIDO2/U2Fプロトコルを使う
+
+### 概要
+
+- openssh v8.2以降で使用可能
+- PAMモジュール不要
+- 別ホストで鍵生成を行っても公開鍵は共通のものが使える
+    - 例えばホストAで生成した公開鍵を登録してもホストBの秘密鍵でsshログインできる
+    - yubikey毎にユニークという感じ
+- 2021/07/01現在githubは一部対応、gitlabは非対応。
+- yubikeyに触れない(`no-touch-required`)版も作れる(通常版と非互換)
+- githubは`no-touch-required`に対応していないため、場合によっては両方作る必要がある
+
+### セットアップ
+
+#### Linux
+
+##### 通常版
+
+1. クライアントにyubikeyを刺す
+1. `ssh-keygen -t ed25519-sk`やって一回タッチ
+    - PIN入れる必要あり
+1. 公開鍵をサーバーに登録する
+
+##### `no-touch-required`フラグ
+
+1. `ssh-keygen -t ed25519-sk -O no-touch-required`
+    - PIN入れる必要あり
+1. 公開鍵に登録する際に`no-touch-required sk-ssh-ed25519@openssh.com AAAA...`のように`no-touch-required`を先頭に付与する
+
+#### Windows
+
+##### 通常版
+
+1. git for windowsを用意する
+1. [tavrez/openssh-sk-winhello](https://github.com/tavrez/openssh-sk-winhello)から`winhello.dll`を入手しgit for windowsの`/usr/lib`等に配置する
+1. git bashを起動し、環境変数を設定する(`export SSH_SK_PROVIDER=/usr/lib/winhello.dll`)
+1. `~/.ssh/config`に以下の内容をマージする
+    ```
+    Host *
+        SecurityKeyProvider winhello.dll
+    ```
+1. `ssh-keygen -t ed25519-sk`やって一回タッチ
+    - PIN入れる必要あり
+
+##### `no-touch-required`フラグ
+
+作れるが実際にはタッチする必要がある。詳細についてはopenssh-sk-winhelloのREADME.mdを参照。
+
+### 接続時
+
+sshコマンド叩いてyubikeyに触れる(`no-touch-required`フラグがあり、Linuxの場合はタッチ不要)
+
+## PIVを使う
+
+### 概要
+
+
+- PIVには事実上自由に使える証明書スロットが4つあるが、今回は9aを使う
+
+### セットアップ
+
+1. ykmanを用意する
+1. 鍵を生成する(`ykman piv keys generate --algorithm ECCP384 9a 9a.pem`)
+1. 証明書を生成する(`ykman piv certificates generate --subject "CN=Your Name" 9a 9a.pem`)
+1. `ssh-keygen -i -m PKCS8 -f 9a.pem`で公開鍵を入手して(標準出力に出てくる)サーバーに登録する
+1. `~/.ssh/config`の該当ホストに以下のオプションを足す
+    ```
+    Host somehost
+      PKCS11Provider /usr/lib/opensc-pkcs11.so
+    ```
+
+### 接続時
+
+普通にsshする。9aの場合はUSBを刺して最初のアクセスの際PINを入れる必要がある(以後不要)。
+
+## GnuPG経由する
+
+やってないので省略
+
+[参考](http://joemphilips.com/post/gpg_memo/#ssh%E9%8D%B5%E3%81%A8%E3%81%97%E3%81%A6%E3%81%AE%E4%BD%BF%E7%94%A8)
+
+## メリデメ
+
+|方法|メリット|デメリット|
+|---|---|---|
+|YubiCloudを使う|セットアップが秒で終わる, クライアントに変なことしなくても良い|要インターネット接続, YubiCloud依存ってどうなの|
+|Challenge-Response(HMAC-SHA1)を使う|クライアントに変なことしなくても良い|サーバーに鍵刺すってそれどうなの|
+|FIDO2/U2Fプロトコルを使う|一番シンプル|githubは一部非対応だったりgitlabは完全非対応だったり普及途上|
+|PIVを使う|PKI基盤がある場合証明書を使い回せる|PIVの仕様を知る必要がある, smartcardへのアクセスが遅い|
+|GnuPGを使う|(未調査)|(未調査)|
+
+## 所感
+
+yubikey依存は嫌だしPIVやGnuPGはツールチェインの習得が難しいのでFIDO2/U2Fプロトコル方式が普及してほしいなぁと思いました。
+
+もうすぐオープン実装のsolokeyが届くので楽しみ(Yubikeyはclosed実装)。
+
+export default ({ children }) => <Layout meta={meta}>{children}</Layout>
+
