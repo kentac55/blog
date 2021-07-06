@@ -700,9 +700,9 @@
   integrity sha512-I2oO8rJn+fnAEQDtMZSmVRBeF4bkU9+6BpN/U5WN64v9Tr/5MHnO/ZQ6vDbehDvOsVzideXWFmvybM5Tt5v8pg==
 
 "@zeit-ui/react-prism@^1":
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/@zeit-ui/react-prism/-/react-prism-1.0.1.tgz#42f128e41313ca0c0a871d43b2b3799f2f4afe1e"
-  integrity sha512-42xQaQzFOpd2N7b8GgRGvcJ0HftAjLbJNmhZL5RHtl2j6G9rJPopyG+7WnFl0F9131PKj/pGrVQ1bTrsI4wLNQ==
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@zeit-ui/react-prism/-/react-prism-1.0.2.tgz#f112f22a2edc5c22bed16c045c8de8b9dc41813d"
+  integrity sha512-nzRjtM7/FYa0xvHxQxksgeZHFSQxdvcRXPpIZiBwsXwgp3DSnp7dZ7FWAytaeRa7iCxuIgEU+Mav0ms2mHuyyw==
 
 "@zeit-ui/react@^1":
   version "1.8.1"
