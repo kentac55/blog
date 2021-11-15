@@ -172,5 +172,20 @@ yubikey依存は嫌だしPIVやGnuPGはツールチェインの習得が難し�
 
 もうすぐオープン実装のsolokeyが届くので楽しみ(Yubikeyはclosed実装)。
 
+## 備考
+
+`ssh-keygen`に`-O resident`というフラグを設定することでそのsmartcardを使用しssh鍵のペアを再生成できる(`ssh-add -K`)。
+これを組み合わせた方法が非常に体験が良い。
+
+```bash
+ssh-add -K
+ssh-add -l
+ssh -T git@github.com
+```
+
+セキュリティのことを考えるとloginに`eval "$(ssh-agent -s)"`を行いlogoutに`ssh-agent -k`を行いたい。
+
+またssh-configに`AddKeysToAgent yes`オプションを入れると更に良い。
+
 export default ({ children }) => <Layout meta={meta}>{children}</Layout>
 
