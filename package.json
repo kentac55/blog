@@ -36,7 +36,7 @@
     "eslint-config-prettier": "^6",
     "eslint-plugin-prettier": "^3",
     "eslint-plugin-react": "^7",
-    "extract-mdx-metadata": "^1",
+    "extract-mdx-metadata": "^2",
     "fs-extra": "^10",
     "husky": "^7",
     "lint-staged": "^10",
