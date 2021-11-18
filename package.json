@@ -43,7 +43,7 @@
     "prettier": "^2",
     "prompt-sync": "^4",
     "rehype-join-line": "^1",
-    "styled-jsx": "^3",
+    "styled-jsx": "^4",
     "typescript": "^4"
   },
   "husky": {
