@@ -18,7 +18,7 @@
     "@zeit-ui/react-icons": "^1",
     "@zeit-ui/react-prism": "^1",
     "ms": "^2",
-    "next": "^11",
+    "next": "^12",
     "react": "16",
     "react-dom": "16"
   },
